@@ -1,0 +1,18 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { sanity } from "../lib/sanity";
+import { qPosts } from "../lib/queries";
+const posts = await sanity.fetch(qPosts);
+---
+<Layout title="Blog">
+  <h1>Blog</h1>
+  <ul>
+    {posts.map((p:any) => (
+        <li>
+          <a href={`/blog/${p.slug}`}>{p.title}</a>
+          {p.publishedAt && <small> — {new Date(p.publishedAt).toLocaleDateString()}</small>}
+          {p.excerpt && <p>{p.excerpt}</p>}
+        </li>
+    ))}
+  </ul>
+</Layout>

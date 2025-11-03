@@ -1,0 +1,26 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { sanity, urlFor } from "../lib/sanity";
+import { qBooks } from "../lib/queries";
+const books = await sanity.fetch(qBooks);
+---
+<Layout title="Books">
+  <h1>Books</h1>
+  <div class="grid">
+    {books.map((b:any) => (
+        <div class="card">
+          {b.cover && <img src={urlFor(b.cover).width(600).url()} alt={b.title} />}
+          <h3>{b.title}</h3>
+          {b.year && <small>{b.year}</small>}
+          {b.description && <p>{b.description}</p>}
+          {b.buyLinks && b.buyLinks.length > 0 && (
+              <p>
+                {b.buyLinks.map((link:any, i:number) => (
+                    <a href={link.url} target="_blank" rel="noopener">{link.label || 'Buy'}</a>
+                ))}
+              </p>
+          )}
+        </div>
+    ))}
+  </div>
+</Layout>

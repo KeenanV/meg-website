@@ -1,0 +1,17 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { sanity } from "../lib/sanity";
+import { qNews } from "../lib/queries";
+const news = await sanity.fetch(qNews);
+---
+<Layout title="News">
+  <h1>News</h1>
+  <ul>
+    {news.map((n:any) => (
+        <li>
+          <a href={`/news/${n.slug}`}>{n.title}</a>
+          {n.date && <small> — {new Date(n.date).toLocaleDateString()}</small>}
+        </li>
+    ))}
+  </ul>
+</Layout>

@@ -1,0 +1,18 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { sanity } from "../../lib/sanity";
+import { qNewsBySlug } from "../../lib/queries";
+
+const { slug } = Astro.params;
+const item = await sanity.fetch(qNewsBySlug, { slug });
+if (!item) {
+  throw new Error("Not found");
+}
+---
+<Layout title={item.title}>
+  <article>
+    <h1>{item.title}</h1>
+    {item.date && <small>{new Date(item.date).toLocaleDateString()}</small>}
+    {item.body?.map((block:any) => <p>{block.children?.map((c:any)=>c.text).join('')}</p>)}
+  </article>
+</Layout>

@@ -1,0 +1,28 @@
+---
+const { title = "Meg", description = "Author site", } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/about">About</a>
+        <a href="/books">Books</a>
+        <a href="/blog">Blog</a>
+        <a href="/news">News</a>
+      </nav>
+    </header>
+    <main class="container">
+      <slot />
+    </main>
+    <footer class="footer">© {new Date().getFullYear()} Meg</footer>
+  </body>
+</html>

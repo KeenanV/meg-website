@@ -1,0 +1,14 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { sanity } from "../lib/sanity";
+import { qAbout } from "../lib/queries";
+const data = await sanity.fetch(qAbout);
+---
+<Layout title="About">
+  <h1>About</h1>
+  {data?.headshot && <img src={data.headshot.asset?.url} alt={data.name} />}
+  <h2>{data?.name}</h2>
+  <div>
+    {data?.bio?.map((block:any) => <p>{block.children?.map((c:any) => c.text).join('')}</p>)}
+  </div>
+</Layout>

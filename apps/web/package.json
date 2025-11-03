@@ -1,0 +1,17 @@
+{
+  "name": "meg-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "@sanity/client": "^6.21.1",
+    "@sanity/image-url": "^1.0.2",
+    "astro": "^4.15.0",
+    "groq": "^3.52.2"
+  }
+}

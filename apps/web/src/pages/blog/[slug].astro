@@ -1,0 +1,20 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { sanity, urlFor } from "../../lib/sanity";
+import { qPostBySlug } from "../../lib/queries";
+
+const { slug } = Astro.params;
+const post = await sanity.fetch(qPostBySlug, { slug });
+
+if (!post) {
+  throw new Error("Not found");
+}
+---
+<Layout title={post.title}>
+  <article>
+    <h1>{post.title}</h1>
+    {post.publishedAt && <small>{new Date(post.publishedAt).toLocaleDateString()}</small>}
+    {post.cover && <img src={urlFor(post.cover).width(900).url()} alt={post.title} />}
+    {post.body?.map((block:any) => <p>{block.children?.map((c:any)=>c.text).join('')}</p>)}
+  </article>
+</Layout>
