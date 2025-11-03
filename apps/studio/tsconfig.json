@@ -7,6 +7,7 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
     "noEmit": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"]
   },

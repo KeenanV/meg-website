@@ -5,7 +5,7 @@ import { schemaTypes } from './schemas';
 
 export default defineConfig({
   name: 'default',
-  title: 'Meg Studio',
+  title: "Meg's Studio",
   projectId: 'ap0mc9ri',
   dataset: 'production',
   plugins: [
