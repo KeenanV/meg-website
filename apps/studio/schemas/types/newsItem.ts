@@ -7,6 +7,7 @@ export default defineType({
   fields: [
     defineField({ name: 'title', type: 'string', title: 'Title', validation: r => r.required() }),
     defineField({ name: 'slug', type: 'slug', title: 'Slug', options: { source: 'title', maxLength: 96 } }),
+    defineField({ name: 'cover', type: 'image', title: 'Cover', options: { hotspot: true } }),
     defineField({ name: 'date', type: 'date', title: 'Date' }),
     defineField({ name: 'body', title: 'Body', type: 'array', of: [defineArrayMember({ type: 'block' })] })
   ]

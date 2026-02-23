@@ -1,13 +1,126 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { sanity } from "../lib/sanity";
+import { qPosts, qNews } from "../lib/queries";
+
+import GlassCard from "../components/GlassCard.astro";
+import GlassButton from "../components/GlassButton.astro";
+import SectionHeader from "../components/SectionHeader.astro";
+import Badge from "../components/Badge.astro";
+
+const posts = await sanity.fetch(qPosts);
+const news = await sanity.fetch(qNews);
+
+const latestPosts = (posts ?? []).slice(0, 3);
+const latestNews = (news ?? []).slice(0, 3);
 ---
-<Layout title="Meg — Author">
-  <h1>Welcome</h1>
-  <p>Explore Meg's latest books, blog posts, and news.</p>
-  <ul>
-    <li><a href="/about">About</a></li>
-    <li><a href="/books">Books</a></li>
-    <li><a href="/blog">Blog</a></li>
-    <li><a href="/news">News</a></li>
-  </ul>
+
+<Layout title="Meg Van Deusen">
+  <!-- HERO -->
+  <section class="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 md:p-10 backdrop-blur-xl will-change-transform">
+    <div class="absolute inset-0 opacity-70 bg-[radial-gradient(60%_60%_at_20%_20%,rgba(16,185,129,0.22),transparent_55%),radial-gradient(55%_45%_at_80%_25%,rgba(59,130,246,0.20),transparent_55%)]"></div>
+
+    <div class="relative">
+      <div class="flex flex-wrap gap-2">
+        <Badge>Psychologist</Badge>
+        <Badge>Author</Badge>
+        <Badge>Speaker</Badge>
+      </div>
+
+      <h1 class="mt-4 text-4xl md:text-5xl font-semibold tracking-tight">
+        Calm, clear psychology for real life.
+      </h1>
+
+      <p class="mt-4 max-w-2xl text-lg leading-relaxed text-white/70">
+        Evidence-based insights on healing, relationships, and the inner work that makes life feel more livable.
+      </p>
+
+      <div class="mt-7 flex flex-wrap gap-3">
+        <GlassButton href="/about" variant="primary">About Meg</GlassButton>
+        <GlassButton href="/blog" variant="ghost">Read the blog</GlassButton>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURE CARDS -->
+  <section class="mt-10 grid gap-4 md:grid-cols-3">
+    <GlassCard href="/books">
+      <div class="text-sm text-white/60">Explore</div>
+      <div class="mt-1 text-xl font-semibold">Books</div>
+      <p class="mt-2 text-sm leading-relaxed text-white/70">
+        Publications, summaries, and where to purchase.
+      </p>
+    </GlassCard>
+
+    <GlassCard href="/news">
+      <div class="text-sm text-white/60">Updates</div>
+      <div class="mt-1 text-xl font-semibold">News</div>
+      <p class="mt-2 text-sm leading-relaxed text-white/70">
+        Announcements, talks, appearances, and media.
+      </p>
+    </GlassCard>
+
+    <GlassCard href="/blog">
+      <div class="text-sm text-white/60">Writing</div>
+      <div class="mt-1 text-xl font-semibold">Blog</div>
+      <p class="mt-2 text-sm leading-relaxed text-white/70">
+        Long-form posts and reflections.
+      </p>
+    </GlassCard>
+  </section>
+
+  <!-- LATEST WRITING -->
+  <section class="mt-12">
+    <SectionHeader
+        title="Latest writing"
+        subtitle="Recent posts from the blog."
+        href="/blog"
+    />
+
+    <div class="mt-5 grid gap-4">
+      {latestPosts.map((p: any) => (
+          <GlassCard href={`/blog/${p.slug}`} class="hover:shadow-blue-500/10">
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div class="min-w-0">
+                <div class="truncate text-lg font-semibold">{p.title}</div>
+                {p.excerpt && <p class="mt-1 text-sm text-white/65">{p.excerpt}</p>}
+              </div>
+
+              {p.publishedAt && (
+                  <div class="text-xs text-white/50">
+                    {new Date(p.publishedAt).toLocaleDateString()}
+                  </div>
+              )}
+            </div>
+          </GlassCard>
+      ))}
+    </div>
+  </section>
+
+  <!-- LATEST NEWS -->
+  <section class="mt-12">
+    <SectionHeader
+        title="News"
+        subtitle="Announcements and updates."
+        href="/news"
+    />
+
+    <div class="mt-5 grid gap-4">
+      {latestNews.map((n: any) => (
+          <GlassCard href={`/news/${n.slug}`}>
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div class="min-w-0">
+                <div class="truncate text-lg font-semibold">{n.title}</div>
+              </div>
+
+              {n.date && (
+                  <div class="text-xs text-white/50">
+                    {new Date(n.date).toLocaleDateString()}
+                  </div>
+              )}
+            </div>
+          </GlassCard>
+      ))}
+    </div>
+  </section>
 </Layout>

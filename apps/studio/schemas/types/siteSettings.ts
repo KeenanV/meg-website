@@ -5,8 +5,13 @@ export default defineType({
   title: 'Site Settings (single)',
   type: 'document',
   fields: [
-    defineField({ name: 'title', type: 'string', title: 'Site Title' }),
-    defineField({ name: 'description', type: 'text', title: 'Description' }),
+    defineField({
+      name: 'title',
+      type: 'string',
+      title: 'Site Title',
+      validation: r => r.required()
+    }),
+    defineField({name: 'description', type: 'text', title: 'Description'}),
     defineField({
       name: 'socials',
       title: 'Social Links',
@@ -16,8 +21,8 @@ export default defineType({
           type: 'object',
           name: 'socialLink',
           fields: [
-            defineField({ name: 'label', type: 'string', title: 'Label' }),
-            defineField({ name: 'url', type: 'url', title: 'URL' })
+            defineField({ name: 'label', type: 'string', title: 'Label', validation: r => r.required() }),
+            defineField({ name: 'url', type: 'url', title: 'URL', validation: r => r.required() })
           ]
         })
       ]

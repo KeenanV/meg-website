@@ -1,0 +1,6 @@
+---
+import { sanity } from "../lib/sanity";
+const site = await sanity.fetch(`*[_type == "siteSettings"][0]{title, description}`);
+---
+
+<pre>{JSON.stringify(site, null, 2)}</pre>

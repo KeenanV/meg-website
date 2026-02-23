@@ -1,0 +1,12 @@
+---
+const {class: className = ""} = Astro.props;
+
+const base =
+    "inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 backdrop-blur-sm will-change-transform";
+
+const classes = `${base} ${className}`.trim();
+---
+
+<span class={classes}>
+  <slot/>
+</span>

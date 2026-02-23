@@ -1,0 +1,48 @@
+---
+import SideNav from "./SideNav.astro";
+---
+
+<div class="md:hidden">
+  <!-- Toggle checkbox -->
+  <input id="nav-toggle" type="checkbox" class="peer hidden"/>
+
+  <!-- Top bar -->
+  <div
+      class="sticky top-0 z-40 flex items-center justify-between border-b border-white/10 bg-white/5 px-4 py-3 backdrop-blur-xl will-change-transform">
+    <a href="/" class="text-sm font-semibold tracking-tight text-white">
+      Meg Van Deusen
+    </a>
+
+    <label
+        for="nav-toggle"
+        class="cursor-pointer rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10 transition"
+    >
+      Menu
+    </label>
+  </div>
+
+  <!-- Backdrop -->
+  <label
+      for="nav-toggle"
+      class="fixed inset-0 z-40 hidden bg-black/50 peer-checked:block"
+  ></label>
+
+  <!-- Drawer -->
+  <div
+      class="fixed left-0 top-0 z-50 h-full w-80 -translate-x-full border-r border-white/10 bg-zinc-950/70 backdrop-blur-2xl transition-transform duration-300 peer-checked:translate-x-0">
+    <div
+        class="flex items-center justify-between px-6 py-5 border-b border-white/10">
+      <div class="text-sm font-semibold text-white">Menu</div>
+      <label
+          for="nav-toggle"
+          class="cursor-pointer rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10 transition"
+      >
+        Close
+      </label>
+    </div>
+
+    <div class="px-2 py-2">
+      <SideNav compact={true}/>
+    </div>
+  </div>
+</div>

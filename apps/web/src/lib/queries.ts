@@ -1,8 +1,8 @@
 import groq from 'groq';
 
-export const qSite = groq`*[_type == "siteSettings"][0]{title, description, socials}`;
+export const qSite = groq`*[_id == "siteSettings"][0]{title, description, socials}`;
 
-export const qAbout = groq`*[_type == "about"][0]{name, bio, headshot}`;
+export const qAbout = groq`*[_id == "about"][0]{name, bio, headshot}`;
 
 export const qBooks = groq`*[_type == "book"]|order(year desc){
   title, "slug": slug.current, cover, description, year, buyLinks
@@ -17,9 +17,9 @@ export const qPostBySlug = groq`*[_type == "blogPost" && slug.current == $slug][
 }`;
 
 export const qNews = groq`*[_type == "newsItem"]|order(date desc){
-  title, "slug": slug.current, date, body
+  title, "slug": slug.current, cover, date, body
 }`;
 
 export const qNewsBySlug = groq`*[_type == "newsItem" && slug.current == $slug][0]{
-  title, date, body
+  title, cover, date, body
 }`;

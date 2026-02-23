@@ -9,9 +9,15 @@
     "check": "astro check"
   },
   "dependencies": {
-    "@sanity/client": "^6.21.1",
-    "@sanity/image-url": "^1.0.2",
-    "astro": "^4.15.0",
-    "groq": "^3.52.2"
+    "@astrojs/tailwind": "^6.0.2",
+    "@portabletext/to-html": "^5.0.1",
+    "@sanity/client": "^7.14.1",
+    "@sanity/image-url": "^2.0.3",
+    "astro": "^5.17.3",
+    "groq": "^5.7.0",
+    "tailwindcss": "^3.4.19"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19"
   }
 }

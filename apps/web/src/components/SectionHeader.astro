@@ -1,0 +1,21 @@
+---
+const {
+  title,
+  subtitle,
+  href,
+  cta = "View all →",
+} = Astro.props;
+---
+
+<div class="flex items-end justify-between gap-4">
+  <div>
+    <h2 class="text-2xl font-semibold tracking-tight">{title}</h2>
+    {subtitle && <p class="mt-1 text-sm text-white/60">{subtitle}</p>}
+  </div>
+
+  {href && (
+      <a href={href} class="text-sm text-white/70 hover:text-white transition">
+        {cta}
+      </a>
+  )}
+</div>

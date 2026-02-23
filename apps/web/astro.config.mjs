@@ -1,6 +1,12 @@
 import { defineConfig } from 'astro/config';
 
+import tailwind from '@astrojs/tailwind';
+
 export default defineConfig({
   output: 'static',
-  site: 'https://example.com', // update when you have your domain
+
+  // update when you have your domain
+  site: 'https://example.com',
+
+  integrations: [tailwind()]
 });

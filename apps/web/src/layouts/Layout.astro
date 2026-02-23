@@ -1,28 +1,88 @@
 ---
-const { title = "Meg", description = "Author site", } = Astro.props;
+import SideNav from "../components/SideNav.astro";
+import MobileNav from "../components/MobileNav.astro";
+
+const {title, description, contentWidth = "2xl", bgImage = "/bg.jpg"} = Astro.props;
+const pageWidth = "mx-auto max-w-" + contentWidth;
 ---
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title}</title>
-    <meta name="description" content={description} />
-    <link rel="stylesheet" href="/styles.css" />
-  </head>
-  <body>
-    <header>
-      <nav class="nav">
-        <a href="/">Home</a>
-        <a href="/about">About</a>
-        <a href="/books">Books</a>
-        <a href="/blog">Blog</a>
-        <a href="/news">News</a>
-      </nav>
-    </header>
-    <main class="container">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>{title ?? "Meg Van Deusen"}</title>
+  {description &&
+      <meta name="description" content={description}/>}
+</head>
+
+<script is:inline>
+  function bindLiquid(el) {
+    let frame = null;
+    let mx = 50;
+    let my = 50;
+
+    function update() {
+      el.style.setProperty("--mx", mx + "%");
+      el.style.setProperty("--my", my + "%");
+      frame = null;
+    }
+
+    el.addEventListener("mousemove", (e) => {
+      const r = el.getBoundingClientRect();
+      mx = ((e.clientX - r.left) / r.width) * 100;
+      my = ((e.clientY - r.top) / r.height) * 100;
+
+      if (!frame) {
+        frame = requestAnimationFrame(update);
+      }
+    });
+
+    el.addEventListener("mouseleave", () => {
+      el.style.removeProperty("--mx");
+      el.style.removeProperty("--my");
+    });
+  }
+
+  function initLiquid() {
+    document.querySelectorAll('[data-liquid="true"]').forEach((el) => {
+      if (!el.__liquidBound) {
+        el.__liquidBound = true;
+        bindLiquid(el);
+      }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initLiquid);
+  } else {
+    initLiquid();
+  }
+
+  document.addEventListener("astro:page-load", initLiquid);
+</script>
+
+<body class="min-h-screen bg-zinc-950 text-white scroll-smooth">
+<!-- Background image + subtle tint -->
+<div class="fixed inset-0 -z-10">
+  <img
+      src={bgImage}
+      class="absolute inset-0 h-full w-full object-cover opacity-80"
+      alt=""
+  />
+  <div class="absolute inset-0 bg-zinc-950/60"></div>
+  <div class="absolute inset-0 backdrop-blur-[2px]"></div>
+</div>
+
+<MobileNav/>
+
+<div class="min-h-screen">
+  <SideNav/>
+
+  <main class="flex-1 px-6 py-10 md:px-10 md:py-12 md:ml-52">
+    <div class={pageWidth}>
       <slot />
-    </main>
-    <footer class="footer">© {new Date().getFullYear()} Meg</footer>
-  </body>
+    </div>
+  </main>
+</div>
+</body>
 </html>

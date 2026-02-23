@@ -1,0 +1,46 @@
+---
+const {
+  href,
+  variant = "primary", // primary | ghost
+  class: className = "",
+  liquid = true,
+} = Astro.props;
+
+const base =
+    "group relative overflow-hidden inline-flex items-center justify-center rounded-2xl border border-white/10 px-5 py-3 text-sm font-medium transition";
+
+const styles =
+    variant === "primary"
+        ? "bg-white/10 text-white hover:bg-white/15"
+        : "bg-white/5 text-white/90 hover:bg-white/10 hover:text-white";
+
+const classes = `${base} ${styles} ${className}`.trim();
+---
+
+{href ? (
+<a href={href} class={classes} data-liquid={liquid ? "true" : "false"}>
+    <span
+        class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        style="background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12), transparent 45%);"
+    ></span>
+  <span
+      class="pointer-events-none absolute -top-24 left-0 h-48 w-full rotate-[-8deg] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+      style="background: linear-gradient(to right, transparent, rgba(255,255,255,0.12), transparent);"
+  ></span>
+
+  <span class="relative"><slot /></span>
+</a>
+    ) : (
+<button class={classes} data-liquid={liquid ? "true" : "false"} type="button">
+    <span
+        class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        style="background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12), transparent 45%);"
+    ></span>
+  <span
+      class="pointer-events-none absolute -top-24 left-0 h-48 w-full rotate-[-8deg] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+      style="background: linear-gradient(to right, transparent, rgba(255,255,255,0.12), transparent);"
+  ></span>
+
+  <span class="relative"><slot /></span>
+</button>
+    )}
