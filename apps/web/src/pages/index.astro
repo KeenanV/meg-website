@@ -17,34 +17,33 @@ const latestNews = (news ?? []).slice(0, 3);
 
 <Layout title="Meg Van Deusen">
   <!-- HERO -->
-  <section class="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 md:p-10 backdrop-blur-xl will-change-transform">
+  <section class="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-black/50 via-black/40 to-black/10 p-8 md:p-10 backdrop-blur-xl will-change-transform">
     <div class="absolute inset-0 opacity-70 bg-[radial-gradient(60%_60%_at_20%_20%,rgba(16,185,129,0.22),transparent_55%),radial-gradient(55%_45%_at_80%_25%,rgba(59,130,246,0.20),transparent_55%)]"></div>
 
     <div class="relative">
       <div class="flex flex-wrap gap-2">
-        <Badge>Psychologist</Badge>
+        <Badge>Clinical Psychologist</Badge>
         <Badge>Author</Badge>
-        <Badge>Speaker</Badge>
       </div>
 
       <h1 class="mt-4 text-4xl md:text-5xl font-semibold tracking-tight">
-        Calm, clear psychology for real life.
+        Calm, clear psychology.
       </h1>
 
       <p class="mt-4 max-w-2xl text-lg leading-relaxed text-white/70">
-        Evidence-based insights on healing, relationships, and the inner work that makes life feel more livable.
+        Depth-oriented, evidence-based insights on healing, relationships, and the inner work that makes life feel more livable.
       </p>
 
       <div class="mt-7 flex flex-wrap gap-3">
-        <GlassButton href="/about" variant="primary">About Meg</GlassButton>
-        <GlassButton href="/blog" variant="ghost">Read the blog</GlassButton>
+        <GlassButton href="/about" variant="primary">Psychotherapy</GlassButton>
+        <GlassButton href="/books" variant="ghost">Books</GlassButton>
       </div>
     </div>
   </section>
 
   <!-- FEATURE CARDS -->
   <section class="mt-10 grid gap-4 md:grid-cols-3">
-    <GlassCard href="/books">
+    <GlassCard href="/books" class="bg-gradient-to-br from-black/20 via-black/15 to-black/10">
       <div class="text-sm text-white/60">Explore</div>
       <div class="mt-1 text-xl font-semibold">Books</div>
       <p class="mt-2 text-sm leading-relaxed text-white/70">
@@ -52,7 +51,7 @@ const latestNews = (news ?? []).slice(0, 3);
       </p>
     </GlassCard>
 
-    <GlassCard href="/news">
+    <GlassCard href="/news" class="bg-gradient-to-br from-black/20 via-black/15 to-black/10">
       <div class="text-sm text-white/60">Updates</div>
       <div class="mt-1 text-xl font-semibold">News</div>
       <p class="mt-2 text-sm leading-relaxed text-white/70">
@@ -60,7 +59,7 @@ const latestNews = (news ?? []).slice(0, 3);
       </p>
     </GlassCard>
 
-    <GlassCard href="/blog">
+    <GlassCard href="/blog" class="bg-gradient-to-br from-black/20 via-black/15 to-black/10">
       <div class="text-sm text-white/60">Writing</div>
       <div class="mt-1 text-xl font-semibold">Blog</div>
       <p class="mt-2 text-sm leading-relaxed text-white/70">
@@ -79,7 +78,7 @@ const latestNews = (news ?? []).slice(0, 3);
 
     <div class="mt-5 grid gap-4">
       {latestPosts.map((p: any) => (
-          <GlassCard href={`/blog/${p.slug}`} class="hover:shadow-blue-500/10">
+          <GlassCard href={`/blog/${p.slug}`} class="bg-gradient-to-br from-black/20 via-black/15 to-black/10 hover:shadow-blue-500/10">
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div class="min-w-0">
                 <div class="truncate text-lg font-semibold">{p.title}</div>
@@ -107,7 +106,7 @@ const latestNews = (news ?? []).slice(0, 3);
 
     <div class="mt-5 grid gap-4">
       {latestNews.map((n: any) => (
-          <GlassCard href={`/news/${n.slug}`}>
+          <GlassCard href={`/news/${n.slug}`} class="bg-gradient-to-br from-black/20 via-black/15 to-black/10">
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div class="min-w-0">
                 <div class="truncate text-lg font-semibold">{n.title}</div>

@@ -17,7 +17,7 @@ const posts = await sanity.fetch(qPosts);
 
   <div class="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
     {posts?.map((p: any) => (
-        <GlassCard href={`/blog/${p.slug}`} class="p-0 overflow-hidden hover:shadow-blue-500/10">
+        <GlassCard href={`/blog/${p.slug}`} class="p-0 overflow-hidden bg-black/25 hover:shadow-blue-500/10">
           {p.cover && (
               <img
                   src={urlFor(p.cover).width(900).height(520).fit("crop").quality(85).url()}

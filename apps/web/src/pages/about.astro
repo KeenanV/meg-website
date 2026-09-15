@@ -1,21 +1,163 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import GlassCard from "../components/GlassCard.astro";
+import StaticGlassCard from "../components/StaticGlassCard.astro";
 import { sanity, urlFor } from "../lib/sanity";
 import { qAbout } from "../lib/queries";
+import {portableTextToHtml} from "../lib/portableText";
 
-const data = await sanity.fetch(qAbout);
+const about = await sanity.fetch(qAbout);
+
+// These fields should be Portable Text arrays in Sanity.
+// If you haven't added them yet, they'll just be empty.
+const aboutHtml = about?.about ? portableTextToHtml(about.about) : "";
+const approachHtml = about?.approach ? portableTextToHtml(about.approach) : "";
+const feesHtml = about?.feesInsurance ? portableTextToHtml(about.feesInsurance) : "";
+
+const sections = [
+  {id: "about", title: "About", html: aboutHtml},
+  {id: "approach", title: "Approach", html: approachHtml},
+  {id: "fees", title: "Fees & Insurance", html: feesHtml},
+];
 ---
+
 <Layout title="About">
-  <h1>About</h1>
-  {data?.headshot && (
-      <img
-          src={urlFor(data.headshot).width(150).quality(100).url()}
-          alt={data.name ?? "Headshot"}
-          loading="lazy"
-      />
-  )}
-  <h2>{data?.name}</h2>
-  <div>
-    {data?.bio?.map((block:any) => <p>{block.children?.map((c:any) => c.text).join('')}</p>)}
-  </div>
+  <StaticGlassCard class="bg-gradient-to-br from-black/25 via-black/20 to-black/15 p-0 overflow-hidden">
+    <div class="pt-8 md:pt-10">
+      <!-- Header stays padded -->
+      <div class="px-8 md:px-10">
+        <!-- Header -->
+        <div class="flex flex-col gap-6 md:flex-row md:items-center">
+          {about?.headshot && (
+              <img
+                  src={urlFor(about.headshot).width(320).height(480).fit("crop").quality(90).url()}
+                  alt={about?.name ?? "Headshot"}
+                  class="h-72 w-48 rounded-2xl object-cover border border-white/10 bg-white/5"
+                  loading="lazy"
+              />
+          )}
+
+          <div>
+            <h1 class="text-4xl md:text-4xl font-semibold tracking-tight">
+              {about?.name ?? "About"}
+            </h1>
+            <p class="mt-3 text-white/70">
+              Clinical Psychologist • Author
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Accordion rows: FULL WIDTH (no padding on the button itself) -->
+      <div class="mt-8 border-t border-white/10">
+        {sections.map((s) => (
+            <section class="border-b border-white/10">
+              <button
+                  type="button"
+                  data-liquid="true"
+                  data-acc-trigger
+                  data-acc-id={s.id}
+                  aria-expanded="false"
+                  class="group relative block w-full overflow-hidden py-7 text-center transition hover:bg-white/6"
+              >
+                <!-- liquid highlight spans ENTIRE button -->
+                <span
+                    class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                    style="background: radial-gradient(900px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12), transparent 50%);"
+                ></span>
+
+                <!-- Content stays aligned with the header padding -->
+                <div class="relative px-8 md:px-10">
+                  <h2 class="text-2xl font-semibold tracking-tight">{s.title}</h2>
+
+                  <div class="mt-3 flex justify-center">
+                    <svg
+                        class="h-5 w-5 text-white/60 transition-transform duration-300 group-aria-expanded:rotate-180"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                    >
+                      <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                  </div>
+                </div>
+              </button>
+
+              <div
+                  class="acc-panel overflow-hidden transition-[max-height] duration-300 ease-in-out"
+                  data-acc-panel
+                  data-acc-id={s.id}
+                  style="max-height: 0px;"
+              >
+                <div class="px-8 pb-8 md:px-10">
+                  <div
+                      class="prose prose-invert max-w-none prose-p:text-white/85 prose-a:text-emerald-200 prose-a:no-underline hover:prose-a:underline">
+                    <div set:html={s.html}/>
+                  </div>
+                </div>
+              </div>
+            </section>
+        ))}
+      </div>
+    </div>
+  </StaticGlassCard>
+
+  <!-- Accordion behavior -->
+  <script is:inline>
+    function setExpanded(trigger, panel, expanded) {
+      trigger.setAttribute("aria-expanded", expanded ? "true" : "false");
+
+      if (expanded) {
+        panel.style.maxHeight = panel.scrollHeight + "px";
+        requestAnimationFrame(() => {
+          panel.style.maxHeight = panel.scrollHeight + "px";
+        });
+      } else {
+        panel.style.maxHeight = "0px";
+      }
+    }
+
+    function initAccordion() {
+      const triggers = Array.from(document.querySelectorAll("[data-acc-trigger]"));
+      const panels = new Map(
+          Array.from(document.querySelectorAll("[data-acc-panel]")).map((p) => [p.dataset.accId, p])
+      );
+
+      triggers.forEach((t) => {
+        if (t.__accBound) return;
+        t.__accBound = true;
+
+        t.addEventListener("click", () => {
+          const id = t.dataset.accId;
+          const panel = panels.get(id);
+          if (!panel) return;
+
+          const isOpen = t.getAttribute("aria-expanded") === "true";
+          setExpanded(t, panel, !isOpen);
+        });
+      });
+
+      window.addEventListener("resize", () => {
+        triggers.forEach((t) => {
+          const id = t.dataset.accId;
+          const panel = panels.get(id);
+          if (!panel) return;
+
+          const isOpen = t.getAttribute("aria-expanded") === "true";
+          if (isOpen) panel.style.maxHeight = panel.scrollHeight + "px";
+        });
+      });
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initAccordion);
+    } else {
+      initAccordion();
+    }
+    document.addEventListener("astro:page-load", initAccordion);
+  </script>
 </Layout>

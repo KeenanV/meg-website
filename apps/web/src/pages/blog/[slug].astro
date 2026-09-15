@@ -2,6 +2,8 @@
 import Layout from "../../layouts/Layout.astro";
 import { sanity, urlFor } from "../../lib/sanity";
 import { qPosts, qPostBySlug } from "../../lib/queries";
+import GlassCard from "../../components/GlassCard.astro";
+import {portableTextToHtml} from "../../lib/portableText";
 
 export async function getStaticPaths() {
   const items = await sanity.fetch(qPosts);
@@ -12,6 +14,7 @@ export async function getStaticPaths() {
 
 const { slug } = Astro.params;
 const blogPost = await sanity.fetch(qPostBySlug, { slug });
+const bodyHtml = portableTextToHtml(blogPost.body);
 
 if (!blogPost) {
   throw new Error("Not found");
@@ -19,18 +22,25 @@ if (!blogPost) {
 ---
 
 <Layout title={blogPost.title} bgImage="/bg-blog.jpg">
-  <article>
-    <h1>{blogPost.title}</h1>
-    {blogPost.date && <small>{new Date(blogPost.date).toLocaleDateString()}</small>}
-    {blogPost?.cover && (
+  <GlassCard hover={false} class="p-0 overflow-hidden">
+    <div class="p-8 md:p-10">
+      <h1 class="text-4xl font-semibold tracking-tight">{blogPost.title}</h1>
+      <div class="mt-3 text-sm text-white/55">{blogPost.excerpt}</div>
+    </div>
+
+    {blogPost.cover && (
         <img
-            src={urlFor(blogPost.cover).width(150).quality(100).url()}
+            src={urlFor(blogPost.cover).width(900).quality(100).url()}
             alt={blogPost.name ?? "Cover Image"}
+            class="h-65 w-full object-cover rounded-2xl"
             loading="lazy"
         />
     )}
-    {blogPost.body?.map((block: any) => (
-        <p>{block.children?.map((c: any) => c.text).join("")}</p>
-    ))}
-  </article>
+
+    <div class="p-8 md:p-10">
+      <div class="mt-8 prose prose-invert max-w-none prose-a:text-emerald-200">
+        <div set:html={bodyHtml}/>
+      </div>
+    </div>
+  </GlassCard>
 </Layout>

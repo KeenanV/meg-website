@@ -7,10 +7,10 @@ const {
 } = Astro.props;
 
 const base =
-    "group relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg will-change-transform";
+    "group relative overflow-hidden rounded-3xl border border-white/10 bg-black/40 backdrop-blur-lg will-change-transform";
 
 const hoverFx = hover
-    ? "transition hover:bg-white/10 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/5"
+    ? "transition hover:bg-gray-500/5 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/5"
     : "";
 
 const pad = "p-4";
@@ -30,9 +30,9 @@ const classes = `${base} ${pad} ${hoverFx} ${className}`.trim();
     </span>
 
   <!-- sheen line -->
-  <span class="pointer-events-none absolute -top-24 left-0 h-48 w-full rotate-[-8deg] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        style="background: linear-gradient(to right, transparent, rgba(255,255,255,0.10), transparent);">
-    </span>
+  <!--<span class="pointer-events-none absolute -top-24 left-0 h-48 w-full rotate-[-8deg] opacity-0 transition-opacity duration-300 group-hover:opacity-100"-->
+  <!--      style="background: linear-gradient(to right, transparent, rgba(255,255,255,0.10), transparent);">-->
+  <!--  </span>-->
 
   <div class="relative">
     <slot />
@@ -44,9 +44,9 @@ const classes = `${base} ${pad} ${hoverFx} ${className}`.trim();
           style="background: radial-gradient(250px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.10), transparent 45%);">
     </span>
 
-  <span class="pointer-events-none absolute -top-24 left-0 h-48 w-full rotate-[-8deg] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        style="background: linear-gradient(to right, transparent, rgba(255,255,255,0.10), transparent);">
-    </span>
+  <!--<span class="pointer-events-none absolute -top-24 left-0 h-48 w-full rotate-[-8deg] opacity-0 transition-opacity duration-300 group-hover:opacity-100"-->
+  <!--      style="background: linear-gradient(to right, transparent, rgba(255,255,255,0.10), transparent);">-->
+  <!--  </span>-->
 
   <div class="relative">
     <slot />
