@@ -78,8 +78,7 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefin
         element.addEventListener('pointerleave', () => {
           if (frame !== undefined) cancelAnimationFrame(frame);
           frame = undefined;
-          element.style.removeProperty('--mx');
-          element.style.removeProperty('--my');
+          // Keep the last position while opacity fades; resetting it causes a center flash.
         });
       });
     </script>

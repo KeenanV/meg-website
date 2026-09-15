@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import StaticGlassCard from '../components/StaticGlassCard.astro';
+import GlassButton from '../components/GlassButton.astro';
 import SectionHeader from '../components/SectionHeader.astro';
 import SanityImage from '../components/SanityImage.astro';
 import { sanity } from '../lib/sanity';
@@ -30,10 +31,9 @@ const books = await sanity.fetch<Book[]>(qBooks);
               <h2 class="mt-3 text-2xl font-semibold leading-snug tracking-tight md:text-3xl">{book.title}</h2>
               {book.description && <p class="mt-5 whitespace-pre-line text-base leading-relaxed text-white/90">{book.description}</p>}
               {links.length > 0 && <div class="mt-7 flex flex-wrap gap-3">
-                {links.map(link => <a href={link.href} target="_blank" rel="noopener noreferrer"
-                  class="inline-flex items-center gap-3 rounded-2xl border border-white/25 bg-white/10 px-5 py-2.5 text-xl leading-6 font-medium transition hover:bg-white/20">
-                  {link.label || 'Buy the book'}<span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span>
-                </a>)}
+                {links.map(link => <GlassButton href={link.href} target="_blank">
+                  {link.label || 'Buy the book'}<span aria-hidden="true" class="ml-3">↗</span><span class="sr-only"> (opens in a new tab)</span>
+                </GlassButton>)}
               </div>}
             </div>
           </article>

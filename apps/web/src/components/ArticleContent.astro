@@ -10,10 +10,10 @@ const { entry, kind } = Astro.props;
 const html = portableTextToHtml(entry.body, richTextImageUrl);
 const date = kind === 'blog' ? entry.publishedAt : entry.date;
 ---
-<StaticGlassCard>
-  <article>
+<StaticGlassCard class="article-pane">
+  <article data-article-kind={kind}>
     <header class="p-7 md:p-10">
-      <a href={'/' + kind} class="inline-block rounded-lg text-sm text-emerald-100 underline underline-offset-4">
+      <a href={'/' + kind} data-article-close class="inline-block rounded-lg text-sm text-emerald-100 underline underline-offset-4">
         <span aria-hidden="true">← </span>{kind === 'blog' ? 'All writing' : 'All news'}
       </a>
       {formatDate(date) && <p class="mt-6 text-sm text-white/80"><time datetime={date}>{formatDate(date)}</time></p>}
@@ -29,3 +29,6 @@ const date = kind === 'blog' ? entry.publishedAt : entry.date;
     </div>
   </article>
 </StaticGlassCard>
+<script>
+  import '../scripts/article-return';
+</script>

@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import GlassCard from '../components/GlassCard.astro';
+import ArticleViewer from '../components/ArticleViewer.astro';
 import SectionHeader from '../components/SectionHeader.astro';
 import SanityImage from '../components/SanityImage.astro';
 import { sanity } from '../lib/sanity';
@@ -13,7 +14,7 @@ const posts = (await sanity.fetch<Article[]>(qPosts)).filter(hasValidSlug);
   <div class="section-intro"><SectionHeader level="h1" title="Sight On Stress" subtitle="Writing and reflections." /></div>
   <div class="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
     {posts.map((post, index) => (
-      <GlassCard href={'/blog/' + post.slug} padding={false}>
+      <GlassCard href={'/blog/' + post.slug} padding={false} article>
         {post.cover && <SanityImage image={post.cover} alt="" width={840} height={525}
           sizes="(min-width: 1280px) 360px, (min-width: 768px) 45vw, 100vw" priority={index < 3}
           class="aspect-[8/5] w-full object-cover" />}
@@ -27,4 +28,5 @@ const posts = (await sanity.fetch<Article[]>(qPosts)).filter(hasValidSlug);
     ))}
   </div>
   {!posts.length && <p class="glass-surface mt-6 p-8 text-white/80">There are no articles to share just yet. Please check back soon.</p>}
+  <ArticleViewer />
 </Layout>

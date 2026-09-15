@@ -4,6 +4,7 @@ const {
   variant = "primary", // primary | ghost
   class: className = "",
   liquid = true,
+  target,
 } = Astro.props;
 
 const base =
@@ -18,7 +19,7 @@ const classes = `${base} ${styles} ${className}`.trim();
 ---
 
 {href ? (
-<a href={href} class={classes} data-liquid={liquid ? "true" : "false"}>
+<a href={href} target={target} rel={target === '_blank' ? 'noopener noreferrer' : undefined} class={classes} data-liquid={liquid ? "true" : "false"}>
     <span
         class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         style="background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12), transparent 45%);"

@@ -80,6 +80,8 @@ Dates use English formatting and UTC consistently. Calendar-only news dates ther
 
 ## Scope and later work
 
+Blog and News cards open an animated article overlay with a horizontal flip and expansion. Click outside the pane, use its back link, or press Escape to return to the card; browser Back/Forward also tracks the article URL. Direct links remain static article pages, with outside-click and Escape dismissal to their listing. Reduced-motion preferences skip the 3D animation, and ordinary links still work without JavaScript or if an article cannot be loaded into the overlay.
+
 - Local hardening and a consistent liquid-glass design come first.
 - `/contact` has a glass form with Name, Email, and Message fields, linked from navigation, Home, and About. Email delivery is not connected yet: Send is a clickable preview button with no action, a visible availability note explains this, and the form prevents submission. No recipient email address is embedded in the page. Connect a server-side email service, validate submissions, and add abuse protection and delivery feedback before wiring up Send.
 - A separate links page will collect the website, socials, and book purchase destinations in the same visual style.
