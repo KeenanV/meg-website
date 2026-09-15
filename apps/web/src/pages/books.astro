@@ -1,26 +1,45 @@
 ---
-import Layout from "../layouts/Layout.astro";
-import { sanity, urlFor } from "../lib/sanity";
-import { qBooks } from "../lib/queries";
-const books = await sanity.fetch(qBooks);
+import Layout from '../layouts/Layout.astro';
+import StaticGlassCard from '../components/StaticGlassCard.astro';
+import SectionHeader from '../components/SectionHeader.astro';
+import SanityImage from '../components/SanityImage.astro';
+import { sanity } from '../lib/sanity';
+import { qBooks } from '../lib/queries';
+import { safeHref } from '../lib/urls';
+import type { Book } from '../lib/content';
+const books = await sanity.fetch<Book[]>(qBooks);
 ---
-<Layout title="Books">
-  <h1>Books</h1>
-  <div class="grid">
-    {books.map((b:any) => (
-        <div class="card">
-          {b.cover && <img src={urlFor(b.cover).width(600).url()} alt={b.title} />}
-          <h3>{b.title}</h3>
-          {b.year && <small>{b.year}</small>}
-          {b.description && <p>{b.description}</p>}
-          {b.buyLinks && b.buyLinks.length > 0 && (
-              <p>
-                {b.buyLinks.map((link:any, i:number) => (
-                    <a href={link.url} target="_blank" rel="noopener">{link.label || 'Buy'}</a>
-                ))}
-              </p>
-          )}
-        </div>
-    ))}
+<Layout title="Books" contentWidth="4xl" description="Explore books by clinical psychologist Meg Van Deusen, with descriptions and links to purchase.">
+  <div class="section-intro">
+    <p class="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-emerald-100">The bookshelf</p>
+    <SectionHeader level="h1" title="Books" subtitle="Psychology beyond the therapy room." />
+  </div>
+  <div class="mt-6 space-y-6">
+    {books.map((book, index) => {
+      const links = (book.buyLinks ?? []).map(link => ({ ...link, href: safeHref(link.url) })).filter(link => link.href);
+      return (
+        <StaticGlassCard class="p-7 md:p-10">
+          <article class="grid items-start gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10">
+            {book.cover && <div class="mx-auto w-48 lg:w-full">
+              <SanityImage image={book.cover} alt={book.cover.alt || 'Cover of ' + book.title} width={660}
+                sizes="(min-width: 1024px) 220px, 192px" priority={index === 0}
+                class="h-auto w-full rounded-lg border border-white/20 shadow-2xl" />
+            </div>}
+            <div class:list={[!book.cover && 'lg:col-span-2']}>
+              {book.year && <p class="text-sm text-emerald-100">Published {book.year}</p>}
+              <h2 class="mt-3 text-2xl font-semibold leading-snug tracking-tight md:text-3xl">{book.title}</h2>
+              {book.description && <p class="mt-5 whitespace-pre-line text-base leading-relaxed text-white/90">{book.description}</p>}
+              {links.length > 0 && <div class="mt-7 flex flex-wrap gap-3">
+                {links.map(link => <a href={link.href} target="_blank" rel="noopener noreferrer"
+                  class="inline-flex items-center gap-3 rounded-2xl border border-white/25 bg-white/10 px-5 py-3 text-sm font-medium transition hover:bg-white/20">
+                  {link.label || 'Buy the book'}<span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span>
+                </a>)}
+              </div>}
+            </div>
+          </article>
+        </StaticGlassCard>
+      );
+    })}
+    {!books.length && <StaticGlassCard class="p-8"><p class="text-white/80">Book details will be available soon.</p></StaticGlassCard>}
   </div>
 </Layout>

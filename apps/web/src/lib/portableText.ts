@@ -1,26 +1,30 @@
-import {toHTML} from "@portabletext/to-html";
-import {urlFor} from "./sanity";
+import { toHTML } from '@portabletext/to-html';
+import type { ContentImage, RichText } from './content.ts';
+import { escapeAttribute, safeHref } from './urls.ts';
 
-export function portableTextToHtml(value: any) {
+export function portableTextToHtml(value?: RichText | null, imageUrl?: (image: ContentImage) => string): string {
+  if (!Array.isArray(value) || value.length === 0) return '';
   return toHTML(value, {
     components: {
       marks: {
-        strong: ({children}) => `<strong>${children}</strong>`,
-        em: ({children}) => `<em>${children}</em>`,
-        link: ({children, value}) => {
-          const href = value?.href || "#";
-          const isExternal = /^https?:\/\//.test(href);
-          const rel = isExternal ? "noopener noreferrer" : "";
-          const target = isExternal ? "_blank" : "";
-          return `<a href="${href}" ${target ? `target="${target}"` : ""} ${rel ? `rel="${rel}"` : ""}>${children}</a>`;
+        link: ({ children, value }) => {
+          const href = safeHref(value?.href);
+          if (!href) return children;
+          const external = /^https?:/i.test(href);
+          return '<a href="' + escapeAttribute(href) + '"' +
+            (external ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + children + '</a>';
         },
       },
       types: {
-        image: ({value}) => {
-          // If you allow images inside rich text blocks
-          const src = urlFor(value).width(1400).quality(85).url();
-          const alt = value?.alt ?? "";
-          return `<img src="${src}" alt="${alt}" />`;
+        image: ({ value }) => {
+          if (!imageUrl || !value?.asset?._ref) return '';
+          try {
+            const src = safeHref(imageUrl(value));
+            if (!src || !/^https?:/i.test(src)) return '';
+            const alt = typeof value.alt === 'string' ? value.alt : '';
+            return '<img src="' + escapeAttribute(src) + '" alt="' + escapeAttribute(alt) +
+              '" loading="lazy" decoding="async" />';
+          } catch { return ''; }
         },
       },
     },

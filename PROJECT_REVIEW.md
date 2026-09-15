@@ -1,5 +1,7 @@
 **Meg website — project review and local startup guide**
 
+**Historical baseline:** Local hardening is documented in [HARDENING.md](HARDENING.md); current startup commands are in [README.md](README.md). The findings below describe the project before that work.
+
 Reviewed September 14, 2026 against the laptop working tree, GitHub, published Sanity content, production builds, and the local browser preview.
 
 The architecture is a good fit for a content-focused professional website. The project is a working prototype with real content and a partially completed visual redesign. It needs a focused completion and deployment pass before launch; there is no evidence here that it needs to be rebuilt with a different stack.

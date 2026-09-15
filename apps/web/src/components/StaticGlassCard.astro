@@ -1,19 +1,5 @@
 ---
-const {class: className = ""} = Astro.props;
-
-// Smoked glass, but NO group-hover overlay, NO liquid, NO hover lift.
-// This is for pages with nested interactive elements (like About accordion).
-const base =
-    "relative overflow-hidden rounded-3xl border border-white/10 bg-black/40 backdrop-blur-xl";
-
-const classes = `${base} ${className}`.trim();
+interface Props { class?: string }
+const { class: className = '' } = Astro.props;
 ---
-
-<div class={classes}>
-  <!-- subtle inner border for depth -->
-  <span
-      class="pointer-events-none absolute inset-0 rounded-3xl border border-white/5"></span>
-  <div class="relative">
-    <slot/>
-  </div>
-</div>
+<div class:list={['glass-surface relative overflow-hidden', className]}><slot /></div>

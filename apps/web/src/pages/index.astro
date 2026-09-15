@@ -1,21 +1,21 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { sanity } from "../lib/sanity";
-import { qPosts, qNews } from "../lib/queries";
+import { qHome } from "../lib/queries";
+import { hasValidSlug, type Article } from "../lib/content";
+import { formatDate } from "../lib/dates";
 
 import GlassCard from "../components/GlassCard.astro";
 import GlassButton from "../components/GlassButton.astro";
 import SectionHeader from "../components/SectionHeader.astro";
 import Badge from "../components/Badge.astro";
 
-const posts = await sanity.fetch(qPosts);
-const news = await sanity.fetch(qNews);
-
-const latestPosts = (posts ?? []).slice(0, 3);
-const latestNews = (news ?? []).slice(0, 3);
+const content = await sanity.fetch<{ posts: Article[]; news: Article[] }>(qHome);
+const latestPosts = content.posts.filter(hasValidSlug);
+const latestNews = content.news.filter(hasValidSlug);
 ---
 
-<Layout title="Meg Van Deusen">
+<Layout>
   <!-- HERO -->
   <section class="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-black/50 via-black/40 to-black/10 p-8 md:p-10 backdrop-blur-xl will-change-transform">
     <div class="absolute inset-0 opacity-70 bg-[radial-gradient(60%_60%_at_20%_20%,rgba(16,185,129,0.22),transparent_55%),radial-gradient(55%_45%_at_80%_25%,rgba(59,130,246,0.20),transparent_55%)]"></div>
@@ -77,7 +77,8 @@ const latestNews = (news ?? []).slice(0, 3);
     />
 
     <div class="mt-5 grid gap-4">
-      {latestPosts.map((p: any) => (
+      {!latestPosts.length && <p class="glass-surface p-6 text-white/80">Writing will be shared here soon.</p>}
+      {latestPosts.map((p) => (
           <GlassCard href={`/blog/${p.slug}`} class="bg-gradient-to-br from-black/20 via-black/15 to-black/10 hover:shadow-blue-500/10">
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div class="min-w-0">
@@ -87,7 +88,7 @@ const latestNews = (news ?? []).slice(0, 3);
 
               {p.publishedAt && (
                   <div class="text-xs text-white/50">
-                    {new Date(p.publishedAt).toLocaleDateString()}
+                    {formatDate(p.publishedAt)}
                   </div>
               )}
             </div>
@@ -105,7 +106,8 @@ const latestNews = (news ?? []).slice(0, 3);
     />
 
     <div class="mt-5 grid gap-4">
-      {latestNews.map((n: any) => (
+      {!latestNews.length && <p class="glass-surface p-6 text-white/80">Updates will be shared here soon.</p>}
+      {latestNews.map((n) => (
           <GlassCard href={`/news/${n.slug}`} class="bg-gradient-to-br from-black/20 via-black/15 to-black/10">
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div class="min-w-0">
@@ -114,7 +116,7 @@ const latestNews = (news ?? []).slice(0, 3);
 
               {n.date && (
                   <div class="text-xs text-white/50">
-                    {new Date(n.date).toLocaleDateString()}
+                    {formatDate(n.date)}
                   </div>
               )}
             </div>

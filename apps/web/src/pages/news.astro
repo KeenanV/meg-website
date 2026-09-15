@@ -1,42 +1,32 @@
 ---
-import Layout from "../layouts/Layout.astro";
-import GlassCard from "../components/GlassCard.astro";
-import SectionHeader from "../components/SectionHeader.astro";
-
-import { sanity, urlFor } from "../lib/sanity";
-import { qNews } from "../lib/queries";
-
-const news = await sanity.fetch(qNews);
+import Layout from '../layouts/Layout.astro';
+import GlassCard from '../components/GlassCard.astro';
+import SectionHeader from '../components/SectionHeader.astro';
+import SanityImage from '../components/SanityImage.astro';
+import { sanity } from '../lib/sanity';
+import { qNews } from '../lib/queries';
+import { hasValidSlug, type Article } from '../lib/content';
+import { formatDate } from '../lib/dates';
+const news = (await sanity.fetch<Article[]>(qNews)).filter(hasValidSlug);
 ---
-
-<Layout title="News" bgImage="/bg-news.jpg" contentWidth="6xl">
-  <SectionHeader
-      title="News"
-      subtitle="Announcements and updates."
-  />
-
-  <div class="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-    {news?.map((n: any) => (
-        <GlassCard href={`/news/${n.slug}`} class="p-0 overflow-hidden bg-black/25">
-          {n.cover && (
-              <img
-                  src={urlFor(n.cover).width(900).height(520).fit("crop").quality(85).url()}
-                  alt={n.title ?? "News cover"}
-                  class="h-44 w-full object-cover bg-white/50 rounded-2xl"
-                  loading="lazy"
-              />
-          )}
-
-          <div class="p-6">
-            <div class="text-lg font-semibold leading-snug">{n.title}</div>
-
-            {n.date && (
-                <div class="mt-2 text-xs text-white/50">
-                  {new Date(n.date).toLocaleDateString()}
-                </div>
-            )}
-          </div>
-        </GlassCard>
+<Layout title="News" background="shore" contentWidth="6xl" description="News, talks, appearances, and updates from Meg Van Deusen.">
+  <div class="section-intro">
+    <p class="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-emerald-100">Out in the world</p>
+    <SectionHeader level="h1" title="News" subtitle="Talks, appearances, and moments to share." />
+  </div>
+  <div class="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+    {news.map((item, index) => (
+      <GlassCard href={'/news/' + item.slug} padding={false}>
+        {item.cover && <div class="aspect-[8/5] bg-white/95 p-4"><SanityImage image={item.cover} alt="" width={840}
+          sizes="(min-width: 1280px) 360px, (min-width: 768px) 45vw, 100vw" priority={index < 3}
+          class="h-full w-full object-contain" /></div>}
+        <div class="p-6">
+          {formatDate(item.date) && <time datetime={item.date} class="text-xs text-emerald-100">{formatDate(item.date)}</time>}
+          <h2 class="mt-2 text-xl font-semibold leading-snug tracking-tight">{item.title}</h2>
+          <p class="mt-5 text-sm text-emerald-100">Read more <span aria-hidden="true">→</span></p>
+        </div>
+      </GlassCard>
     ))}
   </div>
+  {!news.length && <p class="glass-surface mt-6 p-8 text-white/80">There are no updates to share just yet. Please check back soon.</p>}
 </Layout>

@@ -1,55 +1,14 @@
 ---
-const {
-  href,
-  class: className = "",
-  hover = true,
-  liquid = true,
-} = Astro.props;
-
-const base =
-    "group relative overflow-hidden rounded-3xl border border-white/10 bg-black/40 backdrop-blur-lg will-change-transform";
-
-const hoverFx = hover
-    ? "transition hover:bg-gray-500/5 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-500/5"
-    : "";
-
-const pad = "p-4";
-
-const classes = `${base} ${pad} ${hoverFx} ${className}`.trim();
+import { safeHref } from '../lib/urls';
+interface Props { href?: string; class?: string; hover?: boolean; liquid?: boolean; padding?: boolean }
+const { href, class: className = '', hover = Boolean(href), liquid = true, padding = true } = Astro.props;
+const link = safeHref(href);
+const Tag = link ? 'a' : 'div';
 ---
-
-{href ? (
-<a
-    href={href}
-    class={classes}
-    data-liquid={liquid ? "true" : "false"}
->
-  <!-- cursor highlight layer -->
-  <span class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        style="background: radial-gradient(250px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.10), transparent 45%);">
-    </span>
-
-  <!-- sheen line -->
-  <!--<span class="pointer-events-none absolute -top-24 left-0 h-48 w-full rotate-[-8deg] opacity-0 transition-opacity duration-300 group-hover:opacity-100"-->
-  <!--      style="background: linear-gradient(to right, transparent, rgba(255,255,255,0.10), transparent);">-->
-  <!--  </span>-->
-
-  <div class="relative">
-    <slot />
-  </div>
-</a>
-    ) : (
-<div class={classes} data-liquid={liquid ? "true" : "false"}>
-    <span class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-          style="background: radial-gradient(250px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.10), transparent 45%);">
-    </span>
-
-  <!--<span class="pointer-events-none absolute -top-24 left-0 h-48 w-full rotate-[-8deg] opacity-0 transition-opacity duration-300 group-hover:opacity-100"-->
-  <!--      style="background: linear-gradient(to right, transparent, rgba(255,255,255,0.10), transparent);">-->
-  <!--  </span>-->
-
-  <div class="relative">
-    <slot />
-  </div>
-</div>
-    )}
+<Tag href={link} class:list={['glass-surface group relative block overflow-hidden', padding && 'p-4',
+  hover && 'transition duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-xl', className]}
+  data-liquid={hover && liquid ? 'true' : undefined}>
+  {hover && liquid && <span aria-hidden="true" class="pointer-events-none absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100"
+    style="background: radial-gradient(300px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.12), transparent 60%);"></span>}
+  <div class="relative"><slot /></div>
+</Tag>

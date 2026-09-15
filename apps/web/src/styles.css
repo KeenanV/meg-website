@@ -1,9 +1,37 @@
-:root { --maxw: 900px; --pad: 1rem; font-family: system-ui, sans-serif; }
-body { margin:0; line-height:1.6; }
-.nav { display:flex; gap:1rem; padding: var(--pad); border-bottom:1px solid #eee; }
-.container { max-width: var(--maxw); margin: 0 auto; padding: var(--pad); }
-.footer { border-top:1px solid #eee; padding: var(--pad); text-align:center; color:#666; }
-.grid { display:grid; gap:1rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-.card { border:1px solid #eee; border-radius:8px; padding:1rem; background:#fff; }
-.card a { text-decoration:none; color:inherit; }
-img { max-width:100%; height:auto; display:block; }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { color-scheme: dark; scrollbar-gutter: stable; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; }
+  :focus-visible { outline: 2px solid #a7f3d0; outline-offset: 5px; }
+  [hidden] { display: none !important; }
+  img { max-width: 100%; }
+  ::selection { background: #a7f3d0; color: #102720; }
+}
+@layer components {
+  .glass-surface {
+    background: rgba(10, 19, 27, 0.78);
+    border: 1px solid rgba(255,255,255,0.17);
+    border-radius: 1.5rem;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 20px 60px rgba(0,0,0,0.12);
+  }
+  @supports (backdrop-filter: blur(20px)) {
+    .glass-surface { background: rgba(10,19,27,0.64); backdrop-filter: blur(24px) saturate(130%); }
+  }
+  .page-heading { @apply text-4xl font-semibold tracking-tight md:text-5xl; text-wrap: balance; }
+  .reading-copy { @apply prose prose-invert max-w-none prose-p:text-white/90 prose-a:text-emerald-200 prose-a:underline prose-headings:tracking-tight; overflow-wrap: anywhere; }
+  .section-intro { @apply glass-surface p-6 md:p-8; }
+  .skip-link { @apply sr-only; }
+  .skip-link:focus { @apply not-sr-only fixed left-4 top-4 z-[100] rounded-xl bg-zinc-950 px-5 py-3 text-white; }
+  .mobile-dialog { margin: 0; width: min(20rem, calc(100vw - 1.5rem)); max-width: none; height: 100dvh; max-height: 100%; border-radius: 0 1.5rem 1.5rem 0; }
+  .mobile-dialog::backdrop { background: rgba(0,0,0,.55); backdrop-filter: blur(4px); }
+  summary::-webkit-details-marker { display: none; }
+  summary { list-style: none; }
+  details[open]:not([data-expanded="false"]) .disclosure-chevron { transform: rotate(180deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  [data-liquid] { transform: none !important; }
+}
