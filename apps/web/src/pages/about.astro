@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import StaticGlassCard from '../components/StaticGlassCard.astro';
+import GlassButton from '../components/GlassButton.astro';
 import { sanity, urlFor, richTextImageUrl } from '../lib/sanity';
 import { qAbout } from '../lib/queries';
 import type { About } from '../lib/content';
@@ -22,6 +23,7 @@ const sections = [
       <div>
         <h1 class="page-heading">{about?.name || 'Meg Van Deusen'}</h1>
         <p class="mt-4 text-white/80">Clinical Psychologist · Author</p>
+        <GlassButton href="/contact" class="mt-5">Contact</GlassButton>
       </div>
     </div>
     {sections.map(section => (

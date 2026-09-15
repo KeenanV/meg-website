@@ -81,7 +81,7 @@ Dates use English formatting and UTC consistently. Calendar-only news dates ther
 ## Scope and later work
 
 - Local hardening and a consistent liquid-glass design come first.
-- Contact will have its own page or dialog and a real form delivery mechanism.
+- `/contact` has a glass form with Name, Email, and Message fields, linked from navigation, Home, and About. Email delivery is not connected yet: the send button is disabled, a visible availability note explains this, and the form prevents submission. No recipient email address is embedded in the page. Connect a server-side email service, validate submissions, and add abuse protection and delivery feedback before enabling Send.
 - A separate links page will collect the website, socials, and book purchase destinations in the same visual style.
 - GCP account, resources, DNS, HTTPS, build triggers, publish webhooks, and a hosted Studio are later work. `cloudbuild.yaml` is an unverified draft, not a ready-to-run deployment.
 - A reader database, accounts, comments, and private messaging are a later phase, not launch requirements.
