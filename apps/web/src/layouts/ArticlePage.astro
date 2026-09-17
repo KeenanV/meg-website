@@ -7,6 +7,8 @@ import { sanity } from '../lib/sanity';
 import { qPosts, qNews } from '../lib/queries';
 import { hasValidSlug, type Article } from '../lib/content';
 import { formatDate } from '../lib/dates';
+import { Image } from 'astro:assets';
+import blogLogo from '../../../../design-assets/logos/sight-on-stress.png';
 
 interface Props { kind: 'blog' | 'news'; entry?: Article }
 const { kind, entry } = Astro.props;
@@ -23,10 +25,20 @@ const description = entry
 ---
 <Layout title={entry?.title || listingTitle} description={description}
   backgroundScene={isBlog ? 'city' : 'shore'} contentWidth="6xl">
-  <div class="section-intro" data-article-listing-heading>
-    {!isBlog && <p class="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-emerald-100">Out in the world</p>}
-    <Heading class="page-heading">{listingTitle}</Heading>
-    <p class="mt-2 text-base text-white/80">{isBlog ? 'Writing and reflections.' : 'Talks, appearances, and moments to share.'}</p>
+  <div class:list={['section-intro', { 'blog-intro': isBlog }]} data-article-listing-heading>
+    {isBlog ? (
+      <Heading class="blog-logo-heading">
+        <Image src={blogLogo} alt={listingTitle} width={506} widths={[253, 506, 759]}
+          sizes="(min-width: 768px) 253px, 207px" format="webp" quality={90}
+          loading="eager" fetchpriority="high" class="blog-logo" />
+      </Heading>
+    ) : (
+      <>
+        <p class="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-emerald-100">Out in the world</p>
+        <Heading class="page-heading">{listingTitle}</Heading>
+        <p class="mt-2 text-base text-white/80">Talks, appearances, and moments to share.</p>
+      </>
+    )}
   </div>
   <div class="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
     {entries.map((item, index) => (
@@ -55,3 +67,34 @@ const description = entry
   </p>}
   <ArticleViewer kind={kind} entry={entry} listingTitle={listingTitle} listingDescription={listingDescription} />
 </Layout>
+
+<style>
+  .blog-intro {
+    position: sticky;
+    top: 5rem;
+    z-index: 30;
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(5, 12, 20, 0.88);
+  }
+
+  .blog-logo-heading {
+    margin: 0;
+    line-height: 0;
+  }
+
+  .blog-logo {
+    display: block;
+    width: auto;
+    height: 180px;
+    max-height: 28svh;
+    max-width: 100%;
+    object-fit: contain;
+  }
+
+  @media (min-width: 768px) {
+    .blog-intro { top: 1rem; padding: 1.25rem; }
+    .blog-logo { height: 220px; }
+  }
+</style>

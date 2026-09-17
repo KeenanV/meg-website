@@ -10,12 +10,12 @@ assert(!files.some(file => file === 'debug' || file.startsWith('debug/')), 'Debu
 let localTargets = 0;
 for (const file of pages) {
   const html = fs.readFileSync(path.join(root, file), 'utf8');
-  assert.equal((html.match(/<h1(?:\s|>)/g) || []).length, 1, file + ': expected one primary heading');
+  assert.equal((html.match(/<h1[\s>]/g) || []).length, 1, file + ': expected one primary heading');
   assert.match(html, /<meta[^>]*name="description"[^>]*content="[^"]+"/, file + ': missing description');
   assert.doesNotMatch(html, /https:\/\/example\.com/, file + ': placeholder domain');
   if (/^(blog|news)\/[^/]+\/index\.html$/.test(file)) {
     const articlePath = '/' + file.replace(/\/index\.html$/, '');
-    assert.match(html, /<dialog[^>]*\sopen(?:\s|>)/, file + ': direct article must be open on arrival');
+    assert.match(html, /<dialog[^>]*\sopen[\s>]/, file + ': direct article must be open on arrival');
     assert.match(html, /data-initial-article="true"/, file + ': missing direct-entry viewer state');
     assert.match(html, /data-article-link/, file + ': missing background card grid');
     assert.match(html, new RegExp('<a\\b(?=[^>]*href="' + articlePath + '")(?=[^>]*\\bdata-article-link)[^>]*>'),
