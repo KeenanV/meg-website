@@ -1,6 +1,14 @@
-<dialog class="article-dialog" aria-labelledby="article-viewer-title">
-  <div class="article-dialog-backdrop" aria-hidden="true"></div>
-  <div class="article-dialog-content"></div>
+---
+import ArticleContent from './ArticleContent.astro';
+import type { Article } from '../lib/content';
+interface Props { kind: 'blog' | 'news'; entry?: Article; listingTitle: string; listingDescription: string }
+const { kind, entry, listingTitle, listingDescription } = Astro.props;
+---
+<dialog class="article-dialog" aria-labelledby="article-viewer-title" open={Boolean(entry)}
+  data-initial-article={entry ? 'true' : undefined} data-listing-path={'/' + kind}
+  data-listing-title={listingTitle} data-listing-description={listingDescription}>
+  <div class="article-dialog-backdrop" aria-hidden="true" style={entry ? 'opacity: 1' : undefined}></div>
+  <div class="article-dialog-content">{entry && <ArticleContent entry={entry} kind={kind} />}</div>
 </dialog>
 <p class="sr-only" role="status" data-article-status></p>
 <script>
@@ -23,6 +31,7 @@
     overscroll-behavior: contain;
   }
   .article-dialog::backdrop { background: transparent; }
+  .article-dialog[data-initial-article] { z-index: 50; }
   .article-dialog-backdrop {
     position: fixed;
     inset: 0;

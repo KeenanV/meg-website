@@ -8,23 +8,72 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
   const scrim = backdrop;
   const transitionTiming = { duration: 650, easing: 'cubic-bezier(.22,.7,.2,1)' };
   const cards = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[data-article-link]'));
-  const listingURL = location.href;
-  const listingTitle = document.title;
+  const listingURL = new URL(viewer.dataset.listingPath!, location.href).href;
+  const siteTitle = document.querySelector<HTMLMetaElement>('meta[property="og:site_name"]')?.content;
+  const listingTitle = viewer.dataset.listingTitle + (siteTitle ? ' | ' + siteTitle : '');
+  const initialPane = mount.querySelector<HTMLElement>('.article-pane');
   const status = document.querySelector<HTMLElement>('[data-article-status]');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const metadata = Array.from(document.querySelectorAll<HTMLMetaElement | HTMLLinkElement>(
-    'meta[name="description"], meta[property="og:title"], meta[property="og:description"], link[rel="canonical"]',
-  )).map(element => ({ element, original: element.getAttribute(element.tagName === 'LINK' ? 'href' : 'content')! }));
+    'meta[name="description"], meta[property="og:title"], meta[property="og:description"], meta[property="og:url"], link[rel="canonical"]',
+  )).map(element => {
+    const property = element.getAttribute('property');
+    const isURL = element.tagName === 'LINK' || property === 'og:url';
+    const original = isURL
+      ? new URL(viewer.dataset.listingPath!, element.getAttribute(element.tagName === 'LINK' ? 'href' : 'content')!).href
+      : property === 'og:title' ? listingTitle : viewer.dataset.listingDescription!;
+    return { element, original };
+  });
   const cache = new Map<string, Promise<Document>>();
   let source: HTMLAnchorElement | undefined;
   let pane: HTMLElement | undefined;
   let activeURL: string | undefined;
   let reconciling = false;
   let overflow = '';
+  let scrollRestoration: ScrollRestoration = history.scrollRestoration;
   let flightAnimations: Animation[] = [];
   let backdropAnimation: Animation | undefined;
   let sourceVisibility = '';
   let closingRequested = false;
+
+  // Shared links may have a trailing slash, tracking parameters, or a fragment.
+  function currentCard() {
+    const path = location.pathname.replace(/\/$/, '');
+    return cards.find(card => new URL(card.href).pathname.replace(/\/$/, '') === path);
+  }
+
+  function setListingHeading(expanded: boolean) {
+    const heading = document.querySelector('[data-article-listing-heading] :is(h1, h2)');
+    const tag = expanded ? 'h2' : 'h1';
+    if (!heading || heading.tagName.toLowerCase() === tag) return;
+    const replacement = document.createElement(tag);
+    for (const attribute of heading.attributes) replacement.setAttribute(attribute.name, attribute.value);
+    replacement.append(...heading.childNodes);
+    heading.replaceWith(replacement);
+  }
+
+  function showArticle(card: HTMLAnchorElement, article: HTMLElement) {
+    source = card;
+    sourceVisibility = card.style.visibility;
+    source.style.visibility = 'hidden'; // Reserve the source's grid cell until it returns.
+    pane = article;
+    const heading = pane.querySelector('h1')!;
+    heading.id = 'article-viewer-title';
+    heading.tabIndex = -1;
+    mount.replaceChildren(pane);
+    overflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    scrollRestoration = history.scrollRestoration;
+    // Back must not move the grid after the return animation measures its destination.
+    history.scrollRestoration = 'manual';
+    // Promote the server-rendered open dialog to a modal without an opening animation.
+    if (viewer.open) viewer.close();
+    viewer.showModal();
+    viewer.scrollTop = 0;
+    activeURL = card.href;
+    setListingHeading(true);
+    return heading;
+  }
 
   function load(url: string) {
     let request = cache.get(url);
@@ -134,7 +183,9 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     if (source) source.style.visibility = sourceVisibility;
     mount.replaceChildren();
     document.documentElement.style.overflow = overflow;
+    history.scrollRestoration = scrollRestoration;
     updateMetadata();
+    setListingHeading(false);
     source?.focus({ preventScroll: true });
     pane = undefined;
     source = undefined;
@@ -148,7 +199,7 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     reconciling = true;
     try {
       while (true) {
-        const card = cards.find(card => card.href === location.href);
+        const card = currentCard();
         if (activeURL === card?.href) break;
         if (activeURL) { await close(); continue; }
         if (!card) break;
@@ -157,28 +208,15 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
         let page: Document;
         try { page = await load(card.href); }
         catch {
-          if (location.href === card.href) location.assign(card.href);
+          if (currentCard() === card) location.assign(card.href);
           break;
         } finally {
           card.removeAttribute('aria-busy');
           if (status) status.textContent = '';
         }
-        if (location.href !== card.href) continue;
-        source = card;
-        sourceVisibility = card.style.visibility;
-        // Visibility preserves the grid cell while the card lives in the viewer.
-        source.style.visibility = 'hidden';
-        pane = document.importNode(page.querySelector<HTMLElement>('.article-pane')!, true);
-        const heading = pane.querySelector('h1')!;
-        heading.id = 'article-viewer-title';
-        heading.tabIndex = -1;
-        mount.replaceChildren(pane);
-        overflow = document.documentElement.style.overflow;
-        document.documentElement.style.overflow = 'hidden';
-        viewer.showModal();
-        viewer.scrollTop = 0;
+        if (currentCard() !== card) continue;
+        const heading = showArticle(card, document.importNode(page.querySelector<HTMLElement>('.article-pane')!, true));
         updateMetadata(page);
-        activeURL = card.href;
         await fly();
         heading.focus({ preventScroll: true });
       }
@@ -186,10 +224,13 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
   }
 
   function requestClose() {
-    if (closingRequested || location.href !== activeURL) return;
+    if (closingRequested || currentCard()?.href !== activeURL) return;
     closingRequested = true;
     if (history.state?.articleListing === listingURL) history.back();
-    else location.assign(listingURL);
+    else {
+      history.replaceState(null, '', listingURL);
+      void reconcile();
+    }
   }
   cards.forEach(card => {
     // Warm the static article document without blocking ordinary link navigation.
@@ -204,7 +245,18 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
       void reconcile();
     });
   });
-  viewer.addEventListener('cancel', event => { event.preventDefault(); requestClose(); });
+  viewer.addEventListener('cancel', event => {
+    event.preventDefault();
+    // An automatically opened dialog can receive a non-cancelable native close request.
+    // Keep it painted until our return animation finishes, then honor the dismissal.
+    if (!event.cancelable) {
+      const scrollTop = viewer.scrollTop;
+      queueMicrotask(() => {
+        if (activeURL && !viewer.open) { viewer.showModal(); viewer.scrollTop = scrollTop; }
+      });
+    }
+    requestClose();
+  });
   let pressedOutside = false;
   viewer.addEventListener('pointerdown', event => { pressedOutside = event.target === viewer; });
   viewer.addEventListener('click', event => {
@@ -216,6 +268,11 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     }
   });
   viewer.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      requestClose();
+      return;
+    }
     if (event.key !== 'Tab') return;
     const controls = Array.from(mount.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'));
     const first = controls[0];
@@ -233,4 +290,27 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
   }
   motion.addEventListener('change', () => { if (motion.matches) finishTransition(); });
   window.addEventListener('resize', finishTransition);
+  window.addEventListener('pagehide', () => { history.scrollRestoration = scrollRestoration; });
+  window.addEventListener('pageshow', () => {
+    if (activeURL) history.scrollRestoration = 'manual';
+  });
+
+  if (initialPane) {
+    const card = currentCard();
+    if (card) {
+      // Keep the pre-rendered article available for Forward/reopening without another fetch.
+      cache.set(card.href, Promise.resolve(document.cloneNode(true) as Document));
+      const articleURL = location.href;
+      card.scrollIntoView({ block: 'center', behavior: 'instant' });
+      if (history.state?.articleListing !== listingURL) {
+        // Give direct arrivals the same Back/Forward behavior as a click from the grid.
+        history.replaceState(null, '', listingURL);
+        history.pushState({ articleListing: listingURL }, '', articleURL);
+      }
+      const heading = showArticle(card, initialPane);
+      scrim.style.opacity = '1';
+      viewer.removeAttribute('data-initial-article');
+      heading.focus({ preventScroll: true });
+    }
+  }
 }

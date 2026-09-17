@@ -1,0 +1,57 @@
+---
+import Layout from './Layout.astro';
+import GlassCard from '../components/GlassCard.astro';
+import ArticleViewer from '../components/ArticleViewer.astro';
+import SanityImage from '../components/SanityImage.astro';
+import { sanity } from '../lib/sanity';
+import { qPosts, qNews } from '../lib/queries';
+import { hasValidSlug, type Article } from '../lib/content';
+import { formatDate } from '../lib/dates';
+
+interface Props { kind: 'blog' | 'news'; entry?: Article }
+const { kind, entry } = Astro.props;
+const isBlog = kind === 'blog';
+const Heading = entry ? 'h2' : 'h1';
+const entries = (await sanity.fetch<Article[]>(isBlog ? qPosts : qNews)).filter(hasValidSlug);
+const listingTitle = isBlog ? 'Sight On Stress' : 'News';
+const listingDescription = isBlog
+  ? 'Writing and reflections on stress, sleep, and well-being by Meg Van Deusen.'
+  : 'News, talks, appearances, and updates from Meg Van Deusen.';
+const description = entry
+  ? (isBlog ? entry.excerpt || 'An article by Meg Van Deusen from Sight On Stress.' : entry.title + ' — news from Meg Van Deusen.')
+  : listingDescription;
+---
+<Layout title={entry?.title || listingTitle} description={description}
+  backgroundScene={isBlog ? 'city' : 'shore'} contentWidth="6xl">
+  <div class="section-intro" data-article-listing-heading>
+    {!isBlog && <p class="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-emerald-100">Out in the world</p>}
+    <Heading class="page-heading">{listingTitle}</Heading>
+    <p class="mt-2 text-base text-white/80">{isBlog ? 'Writing and reflections.' : 'Talks, appearances, and moments to share.'}</p>
+  </div>
+  <div class="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+    {entries.map((item, index) => (
+      <GlassCard href={'/' + kind + '/' + item.slug} padding={false} article>
+        {item.cover && (isBlog
+          ? <SanityImage image={item.cover} alt="" width={840} height={525}
+              sizes="(min-width: 1280px) 360px, (min-width: 768px) 45vw, 100vw" priority={index < 3}
+              class="aspect-[8/5] w-full shrink-0 object-cover" />
+          : <div class="aspect-[8/5] shrink-0 bg-white/95 p-4"><SanityImage image={item.cover} alt="" width={840}
+              sizes="(min-width: 1280px) 360px, (min-width: 768px) 45vw, 100vw" priority={index < 3}
+              class="h-full w-full object-contain" /></div>)}
+        <div class="flex flex-1 flex-col p-6">
+          {formatDate(isBlog ? item.publishedAt : item.date) &&
+            <time datetime={isBlog ? item.publishedAt : item.date} class="text-xs text-emerald-100">
+              {formatDate(isBlog ? item.publishedAt : item.date)}
+            </time>}
+          <h2 class="mt-2 text-xl font-semibold leading-snug tracking-tight">{item.title}</h2>
+          {isBlog && item.excerpt && <p class="mt-3 line-clamp-3 text-sm leading-relaxed text-white/80">{item.excerpt}</p>}
+          <p class="mt-auto pt-5 text-sm text-emerald-100">{isBlog ? 'Read article' : 'Read more'} <span aria-hidden="true">→</span></p>
+        </div>
+      </GlassCard>
+    ))}
+  </div>
+  {!entries.length && <p class="glass-surface mt-6 p-8 text-white/80">
+    {isBlog ? 'There are no articles to share just yet. Please check back soon.' : 'There are no updates to share just yet. Please check back soon.'}
+  </p>}
+  <ArticleViewer kind={kind} entry={entry} listingTitle={listingTitle} listingDescription={listingDescription} />
+</Layout>

@@ -1,6 +1,5 @@
 ---
-import Layout from '../../layouts/Layout.astro';
-import ArticleContent from '../../components/ArticleContent.astro';
+import ArticlePage from '../../layouts/ArticlePage.astro';
 import { sanity } from '../../lib/sanity';
 import { qPostPages } from '../../lib/queries';
 import { articlePaths, type Article } from '../../lib/content';
@@ -10,6 +9,4 @@ export async function getStaticPaths() {
 interface Props { entry: Article }
 const { entry } = Astro.props;
 ---
-<Layout title={entry.title} description={entry.excerpt || 'An article by Meg Van Deusen from Sight On Stress.'} backgroundScene="city">
-  <ArticleContent entry={entry} kind="blog" />
-</Layout>
+<ArticlePage entry={entry} kind="blog" />
