@@ -14,7 +14,7 @@ if (pane && main && back) {
         { transform: 'perspective(1600px) rotateY(0) scale(1)', opacity: 1 },
         { transform: 'perspective(1600px) rotateY(90deg) scale(.8)', opacity: .5 },
         { transform: 'perspective(1600px) rotateY(180deg) scale(.6)', opacity: 0 },
-      ], { duration: 450, easing: 'ease-in-out', fill: 'forwards' });
+      ], { duration: 650, easing: 'cubic-bezier(.22,.7,.2,1)', fill: 'forwards' });
       await animation.finished.catch(() => {});
     }
     location.assign(back.href);

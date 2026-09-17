@@ -10,6 +10,6 @@ export async function getStaticPaths() {
 interface Props { entry: Article }
 const { entry } = Astro.props;
 ---
-<Layout title={entry.title} description={entry.excerpt || 'An article by Meg Van Deusen from Sight On Stress.'} background="city">
+<Layout title={entry.title} description={entry.excerpt || 'An article by Meg Van Deusen from Sight On Stress.'} backgroundScene="city">
   <ArticleContent entry={entry} kind="blog" />
 </Layout>

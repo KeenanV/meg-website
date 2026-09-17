@@ -14,17 +14,17 @@ interface Props {
   title?: string;
   description?: string;
   contentWidth?: '2xl' | '4xl' | '6xl';
-  background?: 'mountains' | 'city' | 'shore';
+  backgroundScene?: 'mountains' | 'city' | 'shore';
   noindex?: boolean;
 }
-const { title, description, contentWidth = '2xl', background = 'mountains', noindex = false } = Astro.props;
+const { title, description, contentWidth = '4xl', backgroundScene = 'mountains', noindex = false } = Astro.props;
 const settings = await sanity.fetch<SiteSettings | null>(qSite);
 const siteTitle = settings?.title?.trim() || 'Meg Van Deusen';
 const pageTitle = title ? title + ' | ' + siteTitle : siteTitle;
 const pageDescription = description?.trim() || settings?.description?.trim() ||
   'Psychotherapy, books, and writing from Meg Van Deusen, clinical psychologist and author.';
 const widths = { '2xl': 'max-w-2xl', '4xl': 'max-w-4xl', '6xl': 'max-w-6xl' };
-const source = { mountains, city, shore }[background];
+const source = { mountains, city, shore }[backgroundScene];
 const images = await Promise.all([768, 1280, 1920].map(width =>
   getImage({ src: source, width: Math.min(width, source.width), format: 'webp', quality: 78 })
 ));

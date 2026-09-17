@@ -13,7 +13,7 @@ const books = await sanity.fetch<Book[]>(qBooks);
 <Layout title="Books" contentWidth="4xl" description="Explore books by clinical psychologist Meg Van Deusen, with descriptions and links to purchase.">
   <div class="section-intro">
     <p class="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-emerald-100">The bookshelf</p>
-    <SectionHeader level="h1" title="Books" subtitle="Psychology beyond the therapy room." />
+    <SectionHeader level="h1" title="Books" subtitle="Psychology beyond therapy sessions." />
   </div>
   <div class="mt-6 space-y-6">
     {books.map((book, index) => {

@@ -2,15 +2,16 @@
 import Layout from "../layouts/Layout.astro";
 import { sanity } from "../lib/sanity";
 import { qHome } from "../lib/queries";
-import { hasValidSlug, type Article } from "../lib/content";
+import { hasValidSlug, type Article, type About } from "../lib/content";
 import { formatDate } from "../lib/dates";
 
 import GlassCard from "../components/GlassCard.astro";
 import GlassButton from "../components/GlassButton.astro";
 import SectionHeader from "../components/SectionHeader.astro";
 import Badge from "../components/Badge.astro";
+import SanityImage from "../components/SanityImage.astro";
 
-const content = await sanity.fetch<{ posts: Article[]; news: Article[] }>(qHome);
+const content = await sanity.fetch<{ profile: Pick<About, 'name' | 'headshot'> | null; posts: Article[]; news: Article[] }>(qHome);
 const latestPosts = content.posts.filter(hasValidSlug);
 const latestNews = content.news.filter(hasValidSlug);
 ---
@@ -20,24 +21,31 @@ const latestNews = content.news.filter(hasValidSlug);
   <section class="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-black/50 via-black/40 to-black/10 p-8 md:p-10 backdrop-blur-xl will-change-transform">
     <div class="absolute inset-0 opacity-70 bg-[radial-gradient(60%_60%_at_20%_20%,rgba(16,185,129,0.22),transparent_55%),radial-gradient(55%_45%_at_80%_25%,rgba(59,130,246,0.20),transparent_55%)]"></div>
 
-    <div class="relative">
-      <div class="flex flex-wrap gap-2">
-        <Badge>Clinical Psychologist</Badge>
-        <Badge>Author</Badge>
-      </div>
+    <div class:list={['relative grid items-center gap-8', content.profile?.headshot && 'lg:grid-cols-[240px_minmax(0,1fr)]']}>
+      {content.profile?.headshot && <div class="mx-auto w-48 max-w-full lg:mx-0 lg:w-60">
+        <SanityImage image={content.profile.headshot} alt={content.profile.headshot.alt || content.profile.name || 'Meg Van Deusen'}
+          width={600} height={900} sizes="(min-width: 1024px) 240px, 192px" priority
+          class="h-auto w-full rounded-2xl border border-white/20 object-cover shadow-xl" />
+      </div>}
+      <div class="min-w-0">
+        <div class="flex flex-wrap gap-2">
+          <Badge>Clinical Psychologist</Badge>
+          <Badge>Author</Badge>
+        </div>
 
-      <h1 class="mt-4 text-4xl md:text-5xl font-semibold tracking-tight">
-        Calm, clear psychology.
-      </h1>
+        <h1 class="mt-4 text-4xl md:text-5xl font-semibold tracking-tight">
+          Calm, clear psychology.
+        </h1>
 
-      <p class="mt-4 max-w-2xl text-lg leading-relaxed text-white/70">
-        Depth-oriented, evidence-based insights on healing, relationships, and the inner work that makes life feel more livable.
-      </p>
+        <p class="mt-4 max-w-2xl text-lg leading-relaxed text-white/70">
+          Depth-oriented, evidence-based insights on healing, relationships, and the inner work that makes life feel more livable.
+        </p>
 
-      <div class="mt-7 flex flex-wrap gap-3">
-        <GlassButton href="/about" variant="primary">Psychotherapy</GlassButton>
-        <GlassButton href="/books" variant="ghost">Books</GlassButton>
-        <GlassButton href="/contact" variant="ghost">Contact</GlassButton>
+        <div class="mt-7 flex flex-wrap gap-3">
+          <GlassButton href="/about" variant="primary">Psychotherapy</GlassButton>
+          <GlassButton href="/books" variant="ghost">Books</GlassButton>
+          <GlassButton href="/contact" variant="ghost">Contact</GlassButton>
+        </div>
       </div>
     </div>
   </section>

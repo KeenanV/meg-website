@@ -1,9 +1,12 @@
 const dialog = document.querySelector<HTMLDialogElement>('.article-dialog');
 const content = dialog?.querySelector<HTMLElement>('.article-dialog-content');
+const backdrop = dialog?.querySelector<HTMLElement>('.article-dialog-backdrop');
 
-if (dialog && content && typeof dialog.showModal === 'function') {
+if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
   const viewer = dialog;
   const mount = content;
+  const scrim = backdrop;
+  const transitionTiming = { duration: 650, easing: 'cubic-bezier(.22,.7,.2,1)' };
   const cards = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[data-article-link]'));
   const listingURL = location.href;
   const listingTitle = document.title;
@@ -18,7 +21,9 @@ if (dialog && content && typeof dialog.showModal === 'function') {
   let activeURL: string | undefined;
   let reconciling = false;
   let overflow = '';
-  let flightAnimation: Animation | undefined;
+  let flightAnimations: Animation[] = [];
+  let backdropAnimation: Animation | undefined;
+  let sourceVisibility = '';
   let closingRequested = false;
 
   function load(url: string) {
@@ -35,6 +40,19 @@ if (dialog && content && typeof dialog.showModal === 'function') {
     return request;
   }
 
+  async function fadeBackdrop(reverse = false) {
+    const opacity = reverse ? 0 : 1;
+    scrim.style.opacity = String(opacity);
+    if (motion.matches) return;
+    backdropAnimation = scrim.animate([{ opacity: 1 - opacity }, { opacity }],
+      { ...transitionTiming, fill: 'both' });
+    try { await backdropAnimation.finished; } catch { /* Keep the final opacity after cancellation. */ }
+    finally {
+      backdropAnimation.cancel();
+      backdropAnimation = undefined;
+    }
+  }
+
   function updateMetadata(page?: Document) {
     document.title = page?.title || listingTitle;
     for (const { element, original } of metadata) {
@@ -46,21 +64,30 @@ if (dialog && content && typeof dialog.showModal === 'function') {
     }
   }
 
-  // The two faces share a moving frame: the card faces forward initially, the article after a half turn.
+  // Independently rotate the faces so their glass can sample the page behind them.
+  // A shared preserve-3d ancestor prevents that blur from rendering consistently.
   async function fly(reverse = false) {
-    if (!source || !pane || motion.matches) return;
+    if (!source || !pane) return;
+    if (motion.matches) { await fadeBackdrop(reverse); return; }
     const origin = source.getBoundingClientRect();
     const destination = pane.getBoundingClientRect();
     const gutter = parseFloat(getComputedStyle(viewer).paddingTop);
     const top = Math.max(gutter, destination.top);
-    const height = Math.min(destination.bottom - top, innerHeight - top - gutter);
+    // Clip long articles below the viewport, avoiding a temporary rounded bottom edge on screen.
+    const height = Math.min(destination.bottom - top, innerHeight - top + gutter);
+    const surfaces = [source, pane].map(element => {
+      const style = getComputedStyle(element);
+      return { backgroundColor: style.backgroundColor, backdropFilter: style.backdropFilter };
+    });
     const shell = document.createElement('div');
     shell.className = 'article-flight';
     shell.setAttribute('aria-hidden', 'true');
     shell.inert = true;
     const front = document.createElement('div');
     front.className = 'article-flight-face article-flight-front';
-    front.append(source.cloneNode(true));
+    const cardPreview = source.cloneNode(true) as HTMLElement;
+    cardPreview.style.visibility = sourceVisibility;
+    front.append(cardPreview);
     const back = document.createElement('div');
     back.className = 'article-flight-face article-flight-back';
     const preview = pane.cloneNode(true) as HTMLElement;
@@ -71,29 +98,40 @@ if (dialog && content && typeof dialog.showModal === 'function') {
     shell.append(front, back);
     shell.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
     viewer.append(shell);
-    source.style.visibility = 'hidden';
     pane.style.visibility = 'hidden';
     const frame = (left: number, y: number, width: number, h: number, transform: string) =>
       ({ left: `${left}px`, top: `${y}px`, width: `${width}px`, height: `${h}px`, transform });
-    flightAnimation = shell.animate([
-      frame(origin.left, origin.top, origin.width, origin.height, 'perspective(1600px) translateZ(0) rotateY(0deg)'),
-      { ...frame((origin.left + destination.left) / 2, (origin.top + top) / 2,
-        (origin.width + destination.width) / 2, (origin.height + height) / 2,
-        'perspective(1600px) translateZ(180px) rotateY(-90deg)'), offset: .5 },
-      frame(destination.left, top, destination.width, height, 'perspective(1600px) translateZ(0) rotateY(-180deg)'),
-    ], { duration: 650, easing: 'cubic-bezier(.22,.7,.2,1)', fill: 'both', direction: reverse ? 'reverse' : 'normal' });
-    try { await flightAnimation.finished; } catch { /* Cancellation still restores the real content. */ }
+    flightAnimations = [front, back].map((face, index) => {
+      const angle = index * 180;
+      const keyframes: Keyframe[] = [
+        { ...frame(origin.left, origin.top, origin.width, origin.height,
+          `perspective(1600px) translateZ(0) rotateY(${angle}deg)`), ...surfaces[0] },
+        { ...frame((origin.left + destination.left) / 2, (origin.top + top) / 2,
+          (origin.width + destination.width) / 2, (origin.height + height) / 2,
+          `perspective(1600px) translateZ(180px) rotateY(${angle - 90}deg)`), offset: .5 },
+        { ...frame(destination.left, top, destination.width, height,
+          `perspective(1600px) translateZ(0) rotateY(${angle - 180}deg)`), ...surfaces[1] },
+      ];
+      // Reverse the path, not the playback clock: both directions should ease out.
+      return face.animate(reverse ? keyframes.reverse() : keyframes,
+        { ...transitionTiming, fill: 'both' });
+    });
+    try { await Promise.all([fadeBackdrop(reverse), ...flightAnimations.map(animation => animation.finished)]); }
+    catch { /* Cancellation still restores the real content. */ }
     finally {
+      // Reveal only the destination, in the same frame that removes the moving faces.
+      if (reverse) source.style.visibility = sourceVisibility;
+      else pane.style.visibility = '';
       shell.remove();
-      pane.style.visibility = '';
-      source.style.visibility = '';
-      flightAnimation = undefined;
+      flightAnimations.forEach(animation => animation.cancel());
+      flightAnimations = [];
     }
   }
 
   async function close() {
     await fly(true);
     viewer.close();
+    if (source) source.style.visibility = sourceVisibility;
     mount.replaceChildren();
     document.documentElement.style.overflow = overflow;
     updateMetadata();
@@ -127,6 +165,9 @@ if (dialog && content && typeof dialog.showModal === 'function') {
         }
         if (location.href !== card.href) continue;
         source = card;
+        sourceVisibility = card.style.visibility;
+        // Visibility preserves the grid cell while the card lives in the viewer.
+        source.style.visibility = 'hidden';
         pane = document.importNode(page.querySelector<HTMLElement>('.article-pane')!, true);
         const heading = pane.querySelector('h1')!;
         heading.id = 'article-viewer-title';
@@ -186,6 +227,10 @@ if (dialog && content && typeof dialog.showModal === 'function') {
     }
   });
   window.addEventListener('popstate', () => { void reconcile(); });
-  motion.addEventListener('change', () => { if (motion.matches) flightAnimation?.finish(); });
-  window.addEventListener('resize', () => flightAnimation?.finish());
+  function finishTransition() {
+    flightAnimations.forEach(animation => animation.finish());
+    backdropAnimation?.finish();
+  }
+  motion.addEventListener('change', () => { if (motion.matches) finishTransition(); });
+  window.addEventListener('resize', finishTransition);
 }

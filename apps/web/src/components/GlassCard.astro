@@ -10,5 +10,5 @@ const Tag = link ? 'a' : 'div';
   data-liquid={hover && liquid ? 'true' : undefined} data-article-link={article || undefined}>
   {hover && liquid && <span aria-hidden="true" class="pointer-events-none absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100"
     style="background: radial-gradient(300px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.12), transparent 60%);"></span>}
-  <div class="relative"><slot /></div>
+  <div class:list={['relative', article && 'flex h-full flex-col']}><slot /></div>
 </Tag>
