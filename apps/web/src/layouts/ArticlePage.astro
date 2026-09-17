@@ -25,6 +25,7 @@ const description = entry
 ---
 <Layout title={entry?.title || listingTitle} description={description}
   backgroundScene={isBlog ? 'city' : 'shore'} contentWidth="6xl">
+  <div class:list={{ 'blog-listing': isBlog }}>
   <div class:list={['section-intro', { 'blog-intro': isBlog }]} data-article-listing-heading>
     {isBlog ? (
       <Heading class="blog-logo-heading">
@@ -40,7 +41,7 @@ const description = entry
       </>
     )}
   </div>
-  <div class="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+  <div class="article-grid mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
     {entries.map((item, index) => (
       <GlassCard href={'/' + kind + '/' + item.slug} padding={false} article>
         {item.cover && (isBlog
@@ -66,9 +67,22 @@ const description = entry
     {isBlog ? 'There are no articles to share just yet. Please check back soon.' : 'There are no updates to share just yet. Please check back soon.'}
   </p>}
   <ArticleViewer kind={kind} entry={entry} listingTitle={listingTitle} listingDescription={listingDescription} />
+  </div>
 </Layout>
 
+<script>
+  import '../scripts/blog-header';
+</script>
+
 <style>
+  .blog-listing {
+    --logo-progress: 0;
+    --logo-collapse: 0px;
+    --logo-height: min(180px, 28svh);
+    /* Header resizing must not make the browser adjust the user's scroll position. */
+    overflow-anchor: none;
+  }
+
   .blog-intro {
     position: sticky;
     top: 5rem;
@@ -80,21 +94,38 @@ const description = entry
   }
 
   .blog-logo-heading {
+    position: relative;
+    width: 100%;
+    height: calc(var(--logo-height) - var(--logo-collapse));
+    overflow: clip;
     margin: 0;
     line-height: 0;
   }
 
   .blog-logo {
+    position: absolute;
+    left: 50%;
+    top: 50%;
     display: block;
-    width: auto;
-    height: 180px;
-    max-height: 28svh;
-    max-width: 100%;
-    object-fit: contain;
+    width: calc(var(--logo-height) * 1.15);
+    height: var(--logo-height);
+    max-width: none;
+    /* The SOS column occupies x=100..1611 in the original 4600px-wide artwork.
+       Pivot through its center; the suffixes rotate below the clipping edge. */
+    transform-origin: 18.6% 50%;
+    transform: translate(-50%, -50%)
+      translateX(calc(var(--logo-height) * 0.3611 * var(--logo-progress)))
+      rotate(calc(90deg * var(--logo-progress)));
+  }
+
+  .blog-listing > .article-grid {
+    /* Reserve exactly the height lost by the panel. The grid's document position
+       stays fixed, so it scrolls normally while the panel's bottom follows it. */
+    margin-top: calc(1.5rem + var(--logo-collapse));
   }
 
   @media (min-width: 768px) {
+    .blog-listing { --logo-height: min(220px, 28svh); }
     .blog-intro { top: 1rem; padding: 1.25rem; }
-    .blog-logo { height: 220px; }
   }
 </style>
