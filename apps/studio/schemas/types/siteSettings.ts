@@ -22,7 +22,7 @@ export default defineType({
           name: 'socialLink',
           fields: [
             defineField({ name: 'label', type: 'string', title: 'Label', validation: r => r.required() }),
-            defineField({ name: 'url', type: 'url', title: 'URL', validation: r => r.required() })
+            defineField({ name: 'url', type: 'url', title: 'URL', validation: r => r.required().uri({scheme: ['http', 'https']}) })
           ]
         })
       ]

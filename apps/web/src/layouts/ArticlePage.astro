@@ -1,0 +1,131 @@
+---
+import Layout from './Layout.astro';
+import GlassCard from '../components/GlassCard.astro';
+import ArticleViewer from '../components/ArticleViewer.astro';
+import SanityImage from '../components/SanityImage.astro';
+import { sanity } from '../lib/sanity';
+import { qPosts, qNews } from '../lib/queries';
+import { hasValidSlug, type Article } from '../lib/content';
+import { formatDate } from '../lib/dates';
+import { Image } from 'astro:assets';
+import blogLogo from '../../../../design-assets/logos/sight-on-stress.png';
+
+interface Props { kind: 'blog' | 'news'; entry?: Article }
+const { kind, entry } = Astro.props;
+const isBlog = kind === 'blog';
+const Heading = entry ? 'h2' : 'h1';
+const entries = (await sanity.fetch<Article[]>(isBlog ? qPosts : qNews)).filter(hasValidSlug);
+const listingTitle = isBlog ? 'Sight On Stress' : 'News';
+const listingDescription = isBlog
+  ? 'Writing and reflections on stress, sleep, and well-being by Meg Van Deusen.'
+  : 'News, talks, appearances, and updates from Meg Van Deusen.';
+const description = entry
+  ? (isBlog ? entry.excerpt || 'An article by Meg Van Deusen from Sight On Stress.' : entry.title + ' — news from Meg Van Deusen.')
+  : listingDescription;
+---
+<Layout title={entry?.title || listingTitle} description={description}
+  backgroundScene={isBlog ? 'city' : 'shore'} contentWidth="6xl">
+  <div class:list={{ 'blog-listing': isBlog }}>
+  <div class:list={['section-intro', { 'blog-intro': isBlog }]} data-article-listing-heading>
+    {isBlog ? (
+      <Heading class="blog-logo-heading">
+        <Image src={blogLogo} alt={listingTitle} width={506} widths={[253, 506, 759]}
+          sizes="(min-width: 768px) 253px, 207px" format="webp" quality={90}
+          loading="eager" fetchpriority="high" class="blog-logo" />
+      </Heading>
+    ) : (
+      <>
+        <p class="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-emerald-100">Out in the world</p>
+        <Heading class="page-heading">{listingTitle}</Heading>
+        <p class="mt-2 text-base text-white/80">Talks, appearances, and moments to share.</p>
+      </>
+    )}
+  </div>
+  <div class="article-grid mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+    {entries.map((item, index) => (
+      <GlassCard href={'/' + kind + '/' + item.slug} padding={false} article>
+        {item.cover && (isBlog
+          ? <SanityImage image={item.cover} alt="" width={840} height={525}
+              sizes="(min-width: 1280px) 360px, (min-width: 768px) 45vw, 100vw" priority={index < 3}
+              class="aspect-[8/5] w-full shrink-0 object-cover" />
+          : <div class="aspect-[8/5] shrink-0 bg-white/95 p-4"><SanityImage image={item.cover} alt="" width={840}
+              sizes="(min-width: 1280px) 360px, (min-width: 768px) 45vw, 100vw" priority={index < 3}
+              class="h-full w-full object-contain" /></div>)}
+        <div class="flex flex-1 flex-col p-6">
+          {formatDate(isBlog ? item.publishedAt : item.date) &&
+            <time datetime={isBlog ? item.publishedAt : item.date} class="text-xs text-emerald-100">
+              {formatDate(isBlog ? item.publishedAt : item.date)}
+            </time>}
+          <h2 class="mt-2 text-xl font-semibold leading-snug tracking-tight">{item.title}</h2>
+          {isBlog && item.excerpt && <p class="mt-3 line-clamp-3 text-sm leading-relaxed text-white/80">{item.excerpt}</p>}
+          <p class="mt-auto pt-5 text-sm text-emerald-100">{isBlog ? 'Read article' : 'Read more'} <span aria-hidden="true">→</span></p>
+        </div>
+      </GlassCard>
+    ))}
+  </div>
+  {!entries.length && <p class="glass-surface mt-6 p-8 text-white/80">
+    {isBlog ? 'There are no articles to share just yet. Please check back soon.' : 'There are no updates to share just yet. Please check back soon.'}
+  </p>}
+  <ArticleViewer kind={kind} entry={entry} listingTitle={listingTitle} listingDescription={listingDescription} />
+  </div>
+</Layout>
+
+<script>
+  import '../scripts/blog-header';
+</script>
+
+<style>
+  .blog-listing {
+    --logo-progress: 0;
+    --logo-collapse: 0px;
+    --logo-height: min(180px, 28svh);
+    /* Header resizing must not make the browser adjust the user's scroll position. */
+    overflow-anchor: none;
+  }
+
+  .blog-intro {
+    position: sticky;
+    top: 5rem;
+    z-index: 30;
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(5, 12, 20, 0.88);
+  }
+
+  .blog-logo-heading {
+    position: relative;
+    width: 100%;
+    height: calc(var(--logo-height) - var(--logo-collapse));
+    overflow: clip;
+    margin: 0;
+    line-height: 0;
+  }
+
+  .blog-logo {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: block;
+    width: calc(var(--logo-height) * 1.15);
+    height: var(--logo-height);
+    max-width: none;
+    /* The SOS column occupies x=100..1611 in the original 4600px-wide artwork.
+       Pivot through its center; the suffixes rotate below the clipping edge. */
+    transform-origin: 18.6% 50%;
+    transform: translate(-50%, -50%)
+      translateX(calc(var(--logo-height) * 0.3611 * var(--logo-progress)))
+      rotate(calc(90deg * var(--logo-progress)));
+  }
+
+  .blog-listing > .article-grid {
+    /* Reserve exactly the height lost by the panel. The grid's document position
+       stays fixed, so it scrolls normally while the panel's bottom follows it. */
+    margin-top: calc(1.5rem + var(--logo-collapse));
+  }
+
+  @media (min-width: 768px) {
+    .blog-listing { --logo-height: min(220px, 28svh); }
+    .blog-intro { top: 1rem; padding: 1.25rem; }
+  }
+</style>

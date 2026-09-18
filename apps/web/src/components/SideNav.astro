@@ -1,48 +1,32 @@
 ---
-const {compact = false} = Astro.props;
-
+interface Props { compact?: boolean; showBrand?: boolean }
+const { compact = false, showBrand = true } = Astro.props;
 const links = [
-  {href: "/", label: "Home"},
-  {href: "/about", label: "About"},
-  {href: "/books", label: "Books"},
-  {href: "/blog", label: "Blog"},
-  {href: "/news", label: "News"},
+  { href: '/', label: 'Home' }, { href: '/about', label: 'About' },
+  { href: '/books', label: 'Books' }, { href: '/blog', label: 'Blog' }, { href: '/news', label: 'News' },
+  { href: '/contact', label: 'Contact' },
 ];
-
-const shell = compact
-    ? "w-full"
-    : "hidden md:flex md:w-52 md:flex-col md:gap-6 md:border-r md:border-white/10 md:bg-white/5 md:backdrop-blur-lg md:will-change-transform md:fixed md:left-0 md:top-0 md:h-screen";
+const currentPath = Astro.url.pathname.replace(/\/$/, '') || '/';
+const active = (href: string) => currentPath === href || (href !== '/' && currentPath.startsWith(href + '/'));
 ---
-
-<aside class={`${shell} px-3 py-8`}>
-  <div class="space-y-1">
-    <div class="text-lg font-semibold tracking-tight text-white">Meg Van
-      Deusen
-    </div>
-    <div class="text-sm text-white/60">Psychologist</div>
-  </div>
-
-  <nav class="mt-6 flex flex-col gap-1">
-    {links.map((l) => (
-        <a
-            href={l.href}
-            data-liquid="true"
-            class="group relative overflow-hidden rounded-2xl border border-transparent px-4 py-3 text-base font-medium text-white/80 transition
-         hover:text-white hover:bg-white/10 hover:border-white/10"
-        >
-          <span
-              class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-              style="background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12), transparent 45%);"
-          ></span>
-
-          <span class="relative">{l.label}</span>
-        </a>
+<aside class:list={[
+  'px-4', compact && !showBrand ? 'pb-8' : 'py-8',
+  compact ? 'w-full' : 'fixed inset-y-0 left-0 hidden w-52 flex-col overflow-y-auto border-r border-white/15 bg-zinc-950/35 backdrop-blur-xl md:flex',
+]}>
+  {showBrand && <>
+    <a href="/" class="text-lg font-semibold tracking-tight">Meg Van Deusen</a>
+    <p class="mt-1 text-sm text-white/80">Clinical Psychologist</p>
+  </>}
+  <nav aria-label="Main" class:list={['flex flex-col gap-2', showBrand ? 'mt-7' : 'mt-4']}>
+    {links.map(link => (
+      <a href={link.href} aria-current={active(link.href) ? 'page' : undefined} data-liquid="true"
+        class:list={['group relative overflow-hidden rounded-2xl border px-4 py-3 text-xl leading-6 font-medium transition',
+          active(link.href) ? 'border-white/20 bg-white/15 text-white' : 'border-transparent text-white/80 data-[liquid-active=true]:border-white/15 data-[liquid-active=true]:bg-white/10 data-[liquid-active=true]:text-white']}>
+        <span aria-hidden="true" class="pointer-events-none absolute inset-0 opacity-0 transition-opacity liquid-highlight"
+          style="background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12), transparent 55%);"></span>
+        <span class="relative">{link.label}</span>
+      </a>
     ))}
   </nav>
-
-  {!compact && (
-      <div class="mt-auto text-xs text-white/50">
-        © {new Date().getFullYear()}
-      </div>
-  )}
+  {!compact && <p class="mt-auto pt-10 text-xs text-white/70">© {new Date().getFullYear()} Meg Van Deusen</p>}
 </aside>

@@ -1,12 +1,9 @@
 import { defineConfig } from 'astro/config';
 
-import tailwind from '@astrojs/tailwind';
-
 export default defineConfig({
   output: 'static',
-
-  // update when you have your domain
-  site: 'https://example.com',
-
-  integrations: [tailwind()]
+  // Set SITE_URL when the production domain is chosen; localhost has no canonical URL.
+  site: process.env.SITE_URL || undefined,
+  compressHTML: true,
+  server: { host: '127.0.0.1' },
 });

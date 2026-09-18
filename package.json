@@ -1,14 +1,19 @@
 {
   "name": "meg-website",
   "version": "1.0.0",
-  "description": "",
-  "main": "dist/index.js",
+  "description": "Meg Van Deusen's Astro website and Sanity Studio",
   "scripts": {
-    "build": "tsc"
+    "dev": "npm run dev --prefix apps/web",
+    "dev:studio": "npm run dev --prefix apps/studio",
+    "build": "npm run build --prefix apps/web && npm run build --prefix apps/studio",
+    "preview": "npm run preview --prefix apps/web",
+    "check": "npm run check --prefix apps/web && npm run check --prefix apps/studio",
+    "test": "npm test --prefix apps/web && npm test --prefix apps/studio",
+    "verify": "npm run check && npm test && npm run build && npm run check:build --prefix apps/web"
   },
   "dependencies": {},
-  "devDependencies": {
-    "typescript": "^5.5.3"
+  "engines": {
+    "node": ">=24 <25"
   },
   "private": true
 }

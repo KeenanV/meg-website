@@ -1,36 +1,12 @@
 ---
-import Layout from "../../layouts/Layout.astro";
-import { sanity, urlFor } from "../../lib/sanity";
-import { qNews, qNewsBySlug } from "../../lib/queries";
-
+import ArticlePage from '../../layouts/ArticlePage.astro';
+import { sanity } from '../../lib/sanity';
+import { qNewsPages } from '../../lib/queries';
+import { articlePaths, type Article } from '../../lib/content';
 export async function getStaticPaths() {
-  const items = await sanity.fetch(qNews);
-  return items.map((item: any) => ({
-    params: { slug: item.slug },
-  }));
+  return articlePaths(await sanity.fetch<Article[]>(qNewsPages));
 }
-
-const { slug } = Astro.params;
-const newsItem = await sanity.fetch(qNewsBySlug, { slug });
-
-if (!newsItem) {
-  throw new Error("Not found");
-}
+interface Props { entry: Article }
+const { entry } = Astro.props;
 ---
-
-<Layout title={newsItem.title} bgImage="/bg-news.jpg">
-  <article>
-    <h1>{newsItem.title}</h1>
-    {newsItem.date && <small>{new Date(newsItem.date).toLocaleDateString()}</small>}
-    {newsItem?.cover && (
-        <img
-            src={urlFor(newsItem.cover).width(300).quality(100).url()}
-            alt={newsItem.name ?? "Cover Image"}
-            loading="lazy"
-        />
-    )}
-    {newsItem.body?.map((block: any) => (
-        <p>{block.children?.map((c: any) => c.text).join("")}</p>
-    ))}
-  </article>
-</Layout>
+<ArticlePage entry={entry} kind="news" />

@@ -1,9 +1,85 @@
-:root { --maxw: 900px; --pad: 1rem; font-family: system-ui, sans-serif; }
-body { margin:0; line-height:1.6; }
-.nav { display:flex; gap:1rem; padding: var(--pad); border-bottom:1px solid #eee; }
-.container { max-width: var(--maxw); margin: 0 auto; padding: var(--pad); }
-.footer { border-top:1px solid #eee; padding: var(--pad); text-align:center; color:#666; }
-.grid { display:grid; gap:1rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-.card { border:1px solid #eee; border-radius:8px; padding:1rem; background:#fff; }
-.card a { text-decoration:none; color:inherit; }
-img { max-width:100%; height:auto; display:block; }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Defaults for values supplied by Layout and mobile-scene after loading. */
+    --page-scroll-y: 0px;
+    --scene-height: 100lvh;
+    --visible-height: 100dvh;
+    --scene-image: none;
+    --scene-image-width: auto;
+    --scene-image-height: 100lvh;
+  }
+  [data-liquid] { --mx: 50%; --my: 50%; }
+  [data-liquid] > .pointer-events-none { transition-duration: 150ms; }
+  [data-liquid-active="true"] > .liquid-highlight { opacity: 1; }
+  html { color-scheme: dark; scrollbar-gutter: stable; background-color: #09090b; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; }
+  :focus-visible { outline: 2px solid #a7f3d0; outline-offset: 5px; }
+  html[data-input-method="pointer"] :is(a, button, summary):focus-visible { outline: none; }
+  [hidden] { display: none !important; }
+  img { max-width: 100%; }
+  ::selection { background: #a7f3d0; color: #102720; }
+}
+@layer components {
+  .site-background {
+    position: fixed;
+    inset: 0 0 auto;
+    /* Cover the toolbar-hidden viewport from the outset. Unlike dvh, lvh stays
+       constant while mobile browser controls expand/collapse during scrolling. */
+    height: 100lvh;
+    pointer-events: none;
+    z-index: -10;
+  }
+  @supports not (height: 100lvh) {
+    :root { --scene-height: 100vh; --visible-height: 100vh; --scene-image-height: 100vh; }
+    .site-background { height: 100vh; }
+  }
+  .glass-surface {
+    background: rgba(10, 19, 27, 0.78);
+    border: 1px solid rgba(255,255,255,0.17);
+    border-radius: 1.5rem;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 20px 60px rgba(0,0,0,0.12);
+  }
+  @supports (backdrop-filter: blur(20px)) {
+    .glass-surface { background: rgba(10,19,27,0.64); backdrop-filter: blur(24px) saturate(130%); }
+  }
+  .page-heading { @apply text-4xl font-semibold tracking-tight md:text-5xl; text-wrap: balance; }
+  .reading-copy { @apply prose prose-invert max-w-none prose-p:text-white/90 prose-a:text-emerald-200 prose-a:underline prose-headings:tracking-tight; overflow-wrap: anywhere; }
+  .section-intro { @apply glass-surface p-6 md:p-8; }
+  .skip-link { @apply sr-only; }
+  .skip-link:focus { @apply not-sr-only fixed left-4 top-4 z-[100] rounded-xl bg-zinc-950 px-5 py-3 text-white; }
+  .mobile-dialog { position: absolute; inset: var(--page-scroll-y, 0px) 0 auto; z-index: 60; margin: 0; padding: 0; border: 0; width: 100%; max-width: none; height: var(--scene-height, 100lvh); max-height: none; overflow: hidden; background: transparent; }
+  .mobile-menu-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; }
+  .mobile-menu-panel { position: relative; width: min(20rem, calc(100% - 1.5rem)); height: 100%; overflow: hidden; border-radius: 0 1.5rem 1.5rem 0; transform: translateX(-100%); }
+  .mobile-menu-content { height: min(100%, var(--visible-height, 100dvh)); overflow-y: auto; overscroll-behavior: contain; padding-bottom: env(safe-area-inset-bottom); }
+  .mobile-menu-icon { @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/10; }
+  summary::-webkit-details-marker { display: none; }
+  summary { list-style: none; }
+  details[open]:not([data-expanded="false"]) .disclosure-chevron { transform: rotate(180deg); }
+}
+@media (max-width: 767px), (any-pointer: coarse) {
+  /* Keep a document-canvas fallback beneath the browser's translucent chrome.
+     Leave root overscroll at its default so pull-to-refresh remains available. */
+  html {
+    background-image: linear-gradient(rgba(14,20,35,.52), rgba(14,20,35,.52)), var(--scene-image);
+    background-repeat: repeat, repeat-y;
+    background-size: auto, var(--scene-image-width, auto) var(--scene-image-height, 100lvh);
+    background-position: center, center top;
+  }
+  .site-background {
+    /* A fixed layer is independent of the document's bottom edge. Keep the
+       screen-sized canvas measured by mobile-scene, rather than the smaller
+       toolbar-visible viewport. No scroll tracking or negative layout margins. */
+    position: fixed;
+    height: var(--scene-height, 100lvh);
+    background-color: #09090b;
+    transform: translateZ(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  [data-liquid] { transform: none !important; }
+}

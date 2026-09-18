@@ -1,0 +1,22 @@
+---
+import { urlFor } from '../lib/sanity';
+import type { ContentImage } from '../lib/content';
+interface Props {
+  image: ContentImage; alt: string; width?: number; height?: number;
+  sizes?: string; priority?: boolean; class?: string;
+}
+const { image, alt, width = 1200, height, sizes = '(min-width: 768px) 640px, 100vw', priority = false, class: className } = Astro.props;
+const dimensions = image?.asset?._ref?.match(/-(\d+)x(\d+)-[a-z0-9]+$/i);
+const naturalWidth = Number(dimensions?.[1] || width);
+const naturalHeight = Number(dimensions?.[2] || height || width);
+const displayWidth = Math.min(width, naturalWidth);
+const ratio = height ? height / width : naturalHeight / naturalWidth;
+const candidates = [...new Set([Math.round(displayWidth / 2), displayWidth, Math.min(naturalWidth, Math.round(displayWidth * 1.5))])];
+const imageUrl = (size: number) => {
+  const builder = urlFor(image).width(size).quality(82);
+  return (height ? builder.height(Math.round(size * ratio)).fit('crop') : builder).url();
+};
+---
+{dimensions && <img src={imageUrl(displayWidth)} srcset={candidates.map(size => imageUrl(size) + ' ' + size + 'w').join(', ')}
+  sizes={sizes} width={displayWidth} height={Math.round(displayWidth * ratio)} alt={alt}
+  loading={priority ? 'eager' : 'lazy'} decoding="async" class={className} />}

@@ -1,19 +1,27 @@
-/tmp
-/out-tsc
-
-/node_modules
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Dependencies in the root and both apps
+node_modules/
 /.pnp
 .pnp.js
 
+# Build output and generated framework files
+dist/
+.astro/
+.sanity/
+*.tsbuildinfo
+/tmp/
+/out-tsc/
+
+# Local environment configuration; keep the setup template versioned
+.env*
+!.env.example
+
+# OS and editor metadata
+.DS_Store
+.idea/
 .vscode/*
 
-# builds
-dist
-# env
-.env
-.env.local
-# logs
+# Package manager logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 pnpm-debug.log*

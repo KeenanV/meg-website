@@ -1,88 +1,78 @@
 ---
-import SideNav from "../components/SideNav.astro";
-import MobileNav from "../components/MobileNav.astro";
+import { getImage } from 'astro:assets';
+import SideNav from '../components/SideNav.astro';
+import MobileNav from '../components/MobileNav.astro';
+import { sanity } from '../lib/sanity';
+import { qSite } from '../lib/queries';
+import type { SiteSettings } from '../lib/content';
+import mountains from '../assets/backgrounds/bg.webp';
+import city from '../assets/backgrounds/bg-blog.webp';
+import shore from '../assets/backgrounds/bg-news.webp';
+import '../styles.css';
 
-const {title, description, contentWidth = "2xl", bgImage = "/bg.jpg"} = Astro.props;
-const pageWidth = "mx-auto max-w-" + contentWidth;
+interface Props {
+  title?: string;
+  description?: string;
+  contentWidth?: '2xl' | '4xl' | '6xl';
+  backgroundScene?: 'mountains' | 'city' | 'shore';
+  noindex?: boolean;
+}
+const { title, description, contentWidth = '4xl', backgroundScene = 'mountains', noindex = false } = Astro.props;
+const settings = await sanity.fetch<SiteSettings | null>(qSite);
+const siteTitle = settings?.title?.trim() || 'Meg Van Deusen';
+const pageTitle = title ? title + ' | ' + siteTitle : siteTitle;
+const pageDescription = description?.trim() || settings?.description?.trim() ||
+  'Psychotherapy, books, and writing from Meg Van Deusen, clinical psychologist and author.';
+const widths = { '2xl': 'max-w-2xl', '4xl': 'max-w-4xl', '6xl': 'max-w-6xl' };
+const source = { mountains, city, shore }[backgroundScene];
+const images = await Promise.all([768, 1280, 1920].map(width =>
+  getImage({ src: source, width: Math.min(width, source.width), format: 'webp', quality: 78 })
+));
+const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefined;
 ---
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>{title ?? "Meg Van Deusen"}</title>
-  {description &&
-      <meta name="description" content={description}/>}
-</head>
-
-<script is:inline>
-  function bindLiquid(el) {
-    let frame = null;
-    let mx = 50;
-    let my = 50;
-
-    function update() {
-      el.style.setProperty("--mx", mx + "%");
-      el.style.setProperty("--my", my + "%");
-      frame = null;
-    }
-
-    el.addEventListener("mousemove", (e) => {
-      const r = el.getBoundingClientRect();
-      mx = ((e.clientX - r.left) / r.width) * 100;
-      my = ((e.clientY - r.top) / r.height) * 100;
-
-      if (!frame) {
-        frame = requestAnimationFrame(update);
-      }
-    });
-
-    el.addEventListener("mouseleave", () => {
-      el.style.removeProperty("--mx");
-      el.style.removeProperty("--my");
-    });
-  }
-
-  function initLiquid() {
-    document.querySelectorAll('[data-liquid="true"]').forEach((el) => {
-      if (!el.__liquidBound) {
-        el.__liquidBound = true;
-        bindLiquid(el);
-      }
-    });
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initLiquid);
-  } else {
-    initLiquid();
-  }
-
-  document.addEventListener("astro:page-load", initLiquid);
-</script>
-
-<body class="min-h-screen bg-zinc-950 text-white scroll-smooth">
-<!-- Background image + subtle tint -->
-<div class="fixed inset-0 -z-10">
-  <img
-      src={bgImage}
-      class="absolute inset-0 h-full w-full object-cover opacity-80"
-      alt=""
-  />
-  <div class="absolute inset-0 bg-zinc-950/60"></div>
-  <div class="absolute inset-0 backdrop-blur-[2px]"></div>
-</div>
-
-<MobileNav/>
-
-<div class="min-h-screen">
-  <SideNav/>
-
-  <main class="flex-1 px-6 py-10 md:px-10 md:py-12 md:ml-52">
-    <div class={pageWidth}>
-      <slot />
+<html lang="en" data-scene-aspect={source.width / source.height} style={`--scene-image: url("${images[2].src}")`}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={pageDescription} />
+    <meta name="theme-color" content="#101b22" />
+    <title>{pageTitle}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {canonical && <link rel="canonical" href={canonical} />}
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:site_name" content={siteTitle} />
+    <meta property="og:description" content={pageDescription} />
+    <meta property="og:type" content="website" />
+    {canonical && <meta property="og:url" content={canonical} />}
+    <meta name="twitter:card" content="summary" />
+  </head>
+  <body class="min-h-screen text-white">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div class="site-background" aria-hidden="true">
+      <picture>
+      <source media="(max-width: 767px), (any-pointer: coarse)" srcset={images[2].src} />
+      <img src={images[2].src}
+        srcset={images.map(image => image.src + ' ' + image.attributes.width + 'w').join(', ')}
+        sizes="100vw" width={images[2].attributes.width} height={images[2].attributes.height}
+        class="absolute inset-0 h-full w-full object-cover opacity-80" alt="" fetchpriority="high" />
+      </picture>
+      <div class="absolute inset-0 bg-slate-900/40"></div>
     </div>
-  </main>
-</div>
-</body>
+    <MobileNav />
+    <SideNav />
+    <main id="main-content" tabindex="-1" class="min-h-screen px-5 py-8 md:ml-52 md:px-10 md:py-12">
+      <div class:list={['mx-auto', widths[contentWidth]]}><slot /></div>
+    </main>
+    <script>
+      import '../scripts/mobile-scene';
+      import '../scripts/input-method';
+      import { bindLiquidInteraction } from '../scripts/liquid-interaction';
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      document.querySelectorAll<HTMLElement>('[data-liquid="true"]').forEach((element) => {
+        bindLiquidInteraction(element, reducedMotion);
+      });
+    </script>
+  </body>
 </html>

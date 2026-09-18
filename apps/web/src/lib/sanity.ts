@@ -1,15 +1,10 @@
 import { createClient } from '@sanity/client';
-import imageUrlBuilder from '@sanity/image-url';
+import { createImageUrlBuilder } from '@sanity/image-url';
+import { sanityConfig } from './sanityConfig';
+import type { ContentImage } from './content';
 
-const projectId = import.meta.env.PUBLIC_SANITY_PROJECT_ID!;
-const dataset   = import.meta.env.PUBLIC_SANITY_DATASET || 'production';
-const apiVersion = import.meta.env.PUBLIC_SANITY_API_VERSION || '2025-10-26';
-
-export const sanity = createClient({
-  projectId,
-  dataset,
-  apiVersion,
-  useCdn: true
-});
-
-export const urlFor = (source: any) => imageUrlBuilder({ projectId, dataset }).image(source);
+const config = sanityConfig(import.meta.env);
+export const sanity = createClient(config);
+const builder = createImageUrlBuilder(config);
+export const urlFor = (source: ContentImage) => builder.image(source).auto('format');
+export const richTextImageUrl = (source: ContentImage) => urlFor(source).width(1400).quality(80).url();

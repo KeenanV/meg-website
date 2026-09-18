@@ -1,0 +1,69 @@
+---
+import ArticleContent from './ArticleContent.astro';
+import type { Article } from '../lib/content';
+interface Props { kind: 'blog' | 'news'; entry?: Article; listingTitle: string; listingDescription: string }
+const { kind, entry, listingTitle, listingDescription } = Astro.props;
+---
+<dialog class="article-dialog" aria-labelledby="article-viewer-title" open={Boolean(entry)}
+  data-initial-article={entry ? 'true' : undefined} data-listing-path={'/' + kind}
+  data-listing-title={listingTitle} data-listing-description={listingDescription}>
+  <div class="article-dialog-backdrop" aria-hidden="true" style={entry ? 'opacity: 1' : undefined}></div>
+  <div class="article-dialog-content">{entry && <ArticleContent entry={entry} kind={kind} />}</div>
+</dialog>
+<p class="sr-only" role="status" data-article-status></p>
+<script>
+  import '../scripts/article-viewer';
+</script>
+<style is:global>
+  .article-dialog {
+    position: fixed;
+    inset: 0;
+    margin: 0;
+    width: 100%;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    padding: clamp(20px, 4vw, 48px);
+    border: 0;
+    background: transparent;
+    color: white;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .article-dialog::backdrop { background: transparent; }
+  /* On touch devices the article becomes the document's scroller, allowing the
+     browser controls to collapse naturally. The listing is frozen behind it. */
+  .article-dialog[data-document-scroll] {
+    position: relative;
+    inset: auto;
+    height: auto;
+    min-height: var(--scene-height, 100lvh);
+    overflow: visible;
+    overscroll-behavior: auto;
+    z-index: 50;
+  }
+  .article-dialog[data-initial-article] { z-index: 50; }
+  .article-dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: rgba(5, 12, 20, .65);
+    backdrop-filter: blur(10px);
+    opacity: 0;
+  }
+  .article-dialog[data-document-scroll] > .article-dialog-backdrop {
+    /* Paint through the document, including the area behind translucent mobile
+       controls. A fixed backdrop can be clipped to the toolbar-visible viewport. */
+    position: absolute;
+  }
+  .article-dialog-content { @apply max-w-4xl; position: relative; width: 100%; margin: 0 auto; }
+  .article-dialog .article-pane { background: rgba(14, 25, 35, .94); }
+  .article-dialog h1:focus { outline: none; }
+  .article-flight { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+  .article-flight-face { position: fixed; backface-visibility: hidden; border-radius: 1.5rem; overflow: hidden; }
+  /* Keep the glass on each independently transformed face, outside any preserve-3d ancestor. */
+  .article-flight-face > .glass-surface { background: transparent; backdrop-filter: none; }
+  .article-flight-front > * { width: 100%; height: 100%; transform: none !important; transition: none !important; }
+  .article-flight-back .article-pane { min-height: 100%; }
+  a[data-article-link][aria-busy="true"] { cursor: progress; }
+</style>

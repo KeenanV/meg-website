@@ -1,36 +1,12 @@
 ---
-import Layout from "../../layouts/Layout.astro";
-import { sanity, urlFor } from "../../lib/sanity";
-import { qPosts, qPostBySlug } from "../../lib/queries";
-
+import ArticlePage from '../../layouts/ArticlePage.astro';
+import { sanity } from '../../lib/sanity';
+import { qPostPages } from '../../lib/queries';
+import { articlePaths, type Article } from '../../lib/content';
 export async function getStaticPaths() {
-  const items = await sanity.fetch(qPosts);
-  return items.map((item: any) => ({
-    params: { slug: item.slug },
-  }));
+  return articlePaths(await sanity.fetch<Article[]>(qPostPages));
 }
-
-const { slug } = Astro.params;
-const blogPost = await sanity.fetch(qPostBySlug, { slug });
-
-if (!blogPost) {
-  throw new Error("Not found");
-}
+interface Props { entry: Article }
+const { entry } = Astro.props;
 ---
-
-<Layout title={blogPost.title} bgImage="/bg-blog.jpg">
-  <article>
-    <h1>{blogPost.title}</h1>
-    {blogPost.date && <small>{new Date(blogPost.date).toLocaleDateString()}</small>}
-    {blogPost?.cover && (
-        <img
-            src={urlFor(blogPost.cover).width(150).quality(100).url()}
-            alt={blogPost.name ?? "Cover Image"}
-            loading="lazy"
-        />
-    )}
-    {blogPost.body?.map((block: any) => (
-        <p>{block.children?.map((c: any) => c.text).join("")}</p>
-    ))}
-  </article>
-</Layout>
+<ArticlePage entry={entry} kind="blog" />
