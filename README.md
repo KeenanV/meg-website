@@ -82,6 +82,10 @@ Dates use English formatting and UTC consistently. Calendar-only news dates ther
 
 Blog and News cards open an animated article overlay with a horizontal flip and expansion. Click outside the pane, use its back link, or press Escape to return to the card; browser Back/Forward also tracks the article URL. Direct links and refreshes render the same grid with the requested article already open, without an opening animation. Closing returns it to its reserved grid cell. These are still static, shareable article URLs with pre-rendered content and article metadata. Reduced-motion preferences skip the 3D animation, and ordinary links still work without JavaScript or if an article cannot be loaded into the overlay.
 
+Both archives show up to 12 cards per page. `/blog` and `/news` are the first pages; subsequent pages use `/blog/page/2/` and `/news/page/2/`. Pagination replaces just the grid and its controls, returns to the top, and records browser history and scroll positions. A direct article link includes only its own page of background cards. Archives with one page show no pagination controls. All page URLs are generated at build time, so publishing more content requires rebuilding the static site.
+
+The viewer keeps at most five recently opened articles as HTML and metadata, releases replaced grids and their event listeners, and does not prefetch articles on hover. Only the current grid is retained; older pages can be fetched again using the browser's normal HTTP cache. Search is deferred until after launch.
+
 - Local hardening and a consistent liquid-glass design come first.
 - `/contact` has a glass form with Name, Email, and Message fields, linked from navigation, Home, and About. Email delivery is not connected yet: Send is a clickable preview button with no action, a visible availability note explains this, and the form prevents submission. No recipient email address is embedded in the page. Connect a server-side email service, validate submissions, and add abuse protection and delivery feedback before wiring up Send.
 - A separate links page will collect the website, socials, and book purchase destinations in the same visual style.

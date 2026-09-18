@@ -2,6 +2,8 @@
 import Layout from './Layout.astro';
 import GlassCard from '../components/GlassCard.astro';
 import ArticleViewer from '../components/ArticleViewer.astro';
+import Pagination from '../components/Pagination.astro';
+import { paginate, listingPath } from '../lib/pagination';
 import SanityImage from '../components/SanityImage.astro';
 import { sanity } from '../lib/sanity';
 import { qPosts, qNews } from '../lib/queries';
@@ -10,12 +12,15 @@ import { formatDate } from '../lib/dates';
 import { Image } from 'astro:assets';
 import blogLogo from '../../../../design-assets/logos/sight-on-stress.png';
 
-interface Props { kind: 'blog' | 'news'; entry?: Article }
-const { kind, entry } = Astro.props;
+interface Props { kind: 'blog' | 'news'; entry?: Article; page?: number; items?: Article[] }
+const { kind, entry, page: requestedPage = 1, items } = Astro.props;
 const isBlog = kind === 'blog';
 const Heading = entry ? 'h2' : 'h1';
-const entries = (await sanity.fetch<Article[]>(isBlog ? qPosts : qNews)).filter(hasValidSlug);
+const allEntries = (items ?? await sanity.fetch<Article[]>(isBlog ? qPosts : qNews)).filter(hasValidSlug);
+const { entries, page, totalPages } = paginate(allEntries, requestedPage, entry?.slug);
+const path = listingPath(kind, page);
 const listingTitle = isBlog ? 'Sight On Stress' : 'News';
+const pageTitle = listingTitle + (page > 1 ? ` — Page ${page}` : '');
 const listingDescription = isBlog
   ? 'Writing and reflections on stress, sleep, and well-being by Meg Van Deusen.'
   : 'News, talks, appearances, and updates from Meg Van Deusen.';
@@ -23,7 +28,7 @@ const description = entry
   ? (isBlog ? entry.excerpt || 'An article by Meg Van Deusen from Sight On Stress.' : entry.title + ' — news from Meg Van Deusen.')
   : listingDescription;
 ---
-<Layout title={entry?.title || listingTitle} description={description}
+<Layout title={entry?.title || pageTitle} description={description}
   backgroundScene={isBlog ? 'city' : 'shore'} contentWidth="6xl">
   <div class:list={{ 'blog-listing': isBlog }}>
   <div class:list={['section-intro', { 'blog-intro': isBlog }]} data-article-listing-heading>
@@ -41,7 +46,10 @@ const description = entry
       </>
     )}
   </div>
-  <div class="article-grid mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+  <section class="article-results mt-6" data-article-results data-listing-path={path}
+    data-listing-title={pageTitle} data-page={page} data-total-pages={totalPages}
+    aria-label={`${listingTitle}, page ${page} of ${totalPages}`} tabindex="-1">
+  <div class="article-grid grid gap-5 md:grid-cols-2 lg:grid-cols-3">
     {entries.map((item, index) => (
       <GlassCard href={'/' + kind + '/' + item.slug} padding={false} article>
         {item.cover && (isBlog
@@ -66,7 +74,9 @@ const description = entry
   {!entries.length && <p class="glass-surface mt-6 p-8 text-white/80">
     {isBlog ? 'There are no articles to share just yet. Please check back soon.' : 'There are no updates to share just yet. Please check back soon.'}
   </p>}
-  <ArticleViewer kind={kind} entry={entry} listingTitle={listingTitle} listingDescription={listingDescription} />
+  <Pagination kind={kind} page={page} totalPages={totalPages} />
+  </section>
+  <ArticleViewer kind={kind} entry={entry} listingPath={path} listingTitle={pageTitle} listingDescription={listingDescription} />
   </div>
 </Layout>
 
@@ -75,6 +85,9 @@ const description = entry
 </script>
 
 <style>
+  .article-results { overflow-anchor: none; }
+  .article-results:focus { outline: none; }
+
   .blog-listing {
     --logo-progress: 0;
     --logo-collapse: 0px;
@@ -118,7 +131,7 @@ const description = entry
       rotate(calc(90deg * var(--logo-progress)));
   }
 
-  .blog-listing > .article-grid {
+  .blog-listing > .article-results {
     /* Reserve exactly the height lost by the panel. The grid's document position
        stays fixed, so it scrolls normally while the panel's bottom follows it. */
     margin-top: calc(1.5rem + var(--logo-collapse));

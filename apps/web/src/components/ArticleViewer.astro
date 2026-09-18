@@ -1,14 +1,14 @@
 ---
 import ArticleContent from './ArticleContent.astro';
 import type { Article } from '../lib/content';
-interface Props { kind: 'blog' | 'news'; entry?: Article; listingTitle: string; listingDescription: string }
-const { kind, entry, listingTitle, listingDescription } = Astro.props;
+interface Props { kind: 'blog' | 'news'; entry?: Article; listingPath: string; listingTitle: string; listingDescription: string }
+const { kind, entry, listingPath, listingTitle, listingDescription } = Astro.props;
 ---
 <dialog class="article-dialog" aria-labelledby="article-viewer-title" open={Boolean(entry)}
-  data-initial-article={entry ? 'true' : undefined} data-listing-path={'/' + kind}
+  data-initial-article={entry ? 'true' : undefined} data-listing-path={listingPath}
   data-listing-title={listingTitle} data-listing-description={listingDescription}>
   <div class="article-dialog-backdrop" aria-hidden="true" style={entry ? 'opacity: 1' : undefined}></div>
-  <div class="article-dialog-content">{entry && <ArticleContent entry={entry} kind={kind} />}</div>
+  <div class="article-dialog-content">{entry && <ArticleContent entry={entry} kind={kind} listingPath={listingPath} />}</div>
 </dialog>
 <p class="sr-only" role="status" data-article-status></p>
 <script>

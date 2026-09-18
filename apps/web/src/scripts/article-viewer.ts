@@ -1,5 +1,7 @@
 import { restoreDialogFocus } from './input-method';
 import { beginArticleDocumentScroll } from './article-document-scroll';
+import { bindLiquidInteraction, unbindLiquidInteraction } from './liquid-interaction';
+import { LruCache } from '../lib/lru-cache';
 
 const dialog = document.querySelector<HTMLDialogElement>('.article-dialog');
 const content = dialog?.querySelector<HTMLElement>('.article-dialog-content');
@@ -10,11 +12,13 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
   const mount = content;
   const scrim = backdrop;
   const transitionTiming = { duration: 650, easing: 'cubic-bezier(.22,.7,.2,1)' };
-  const cards = Array.from(document.querySelectorAll<HTMLAnchorElement>('a[data-article-link]'));
-  const listingURL = new URL(viewer.dataset.listingPath!, location.href).href;
+  let results = document.querySelector<HTMLElement>('[data-article-results]')!;
+  const kind = new URL(viewer.dataset.listingPath!, location.href).pathname.split('/')[1];
+  const listingPattern = new RegExp(`^/${kind}(?:/page/[2-9][0-9]*|/page/1[0-9]+)?/?$`);
+  let listingURL = new URL(viewer.dataset.listingPath!, location.href).href;
   const siteTitle = document.querySelector<HTMLMetaElement>('meta[property="og:site_name"]')?.content;
-  const listingTitle = viewer.dataset.listingTitle + (siteTitle ? ' | ' + siteTitle : '');
-  const initialPane = mount.querySelector<HTMLElement>('.article-pane');
+  let listingTitle = viewer.dataset.listingTitle + (siteTitle ? ' | ' + siteTitle : '');
+  let initialPane = mount.querySelector<HTMLElement>('.article-pane');
   const status = document.querySelector<HTMLElement>('[data-article-status]');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const metadata = Array.from(document.querySelectorAll<HTMLMetaElement | HTMLLinkElement>(
@@ -25,15 +29,27 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     const original = isURL
       ? new URL(viewer.dataset.listingPath!, element.getAttribute(element.tagName === 'LINK' ? 'href' : 'content')!).href
       : property === 'og:title' ? listingTitle : viewer.dataset.listingDescription!;
-    return { element, original };
+    const attribute = element.tagName === 'LINK' ? 'href' : 'content';
+    const selector = element.tagName === 'LINK' ? 'link[rel="canonical"]' :
+      element.hasAttribute('name') ? `meta[name="${element.getAttribute('name')}"]` :
+        `meta[property="${property}"]`;
+    return { element, original, attribute, selector };
   });
-  const cache = new Map<string, Promise<Document>>();
+  type PageMetadata = { title: string; values: string[] };
+  type ArticleData = { html: string; metadata: PageMetadata };
+  // Cache only five extracted articles, never their surrounding grids or documents.
+  const cache = new LruCache<ArticleData>(5);
+  let pendingRequest: AbortController | undefined;
+  let scrollTimer: ReturnType<typeof setTimeout> | undefined;
+  let newPageNavigation = false;
+  let restorePagePosition = false;
+  const originalScrollRestoration = history.scrollRestoration;
+  history.scrollRestoration = 'manual';
   let source: HTMLAnchorElement | undefined;
   let pane: HTMLElement | undefined;
   let activeURL: string | undefined;
   let reconciling = false;
   let overflow = '';
-  let scrollRestoration: ScrollRestoration = history.scrollRestoration;
   let flightAnimations: Animation[] = [];
   let backdropAnimation: Animation | undefined;
   let sourceVisibility = '';
@@ -43,7 +59,7 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
   // Shared links may have a trailing slash, tracking parameters, or a fragment.
   function currentCard() {
     const path = location.pathname.replace(/\/$/, '');
-    return cards.find(card => new URL(card.href).pathname.replace(/\/$/, '') === path);
+    return Array.from(results.querySelectorAll<HTMLAnchorElement>('a[data-article-link]')).find(card => new URL(card.href).pathname.replace(/\/$/, '') === path);
   }
 
   function setListingHeading(expanded: boolean) {
@@ -68,7 +84,6 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     mount.replaceChildren(pane);
     overflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = 'hidden';
-    scrollRestoration = history.scrollRestoration;
     // Back must not move the grid after the return animation measures its destination.
     history.scrollRestoration = 'manual';
     // Promote the server-rendered open dialog to a modal without an opening animation.
@@ -81,18 +96,100 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     return heading;
   }
 
-  function load(url: string) {
-    let request = cache.get(url);
-    if (!request) {
-      request = fetch(url).then(async response => {
-        if (!response.ok) throw new Error('Article unavailable');
-        const page = new DOMParser().parseFromString(await response.text(), 'text/html');
-        if (!page.querySelector('.article-pane h1')) throw new Error('Invalid article page');
-        return page;
-      }).catch(error => { cache.delete(url); throw error; });
-      cache.set(url, request);
+  function readMetadata(page: Document): PageMetadata {
+    return { title: page.title, values: metadata.map(({ selector, attribute, original }) =>
+      page.querySelector(selector)?.getAttribute(attribute) || original) };
+  }
+
+  async function fetchPage(url: string) {
+    const controller = new AbortController();
+    pendingRequest = controller;
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) throw new Error('Page unavailable');
+      return new DOMParser().parseFromString(await response.text(), 'text/html');
+    } finally { if (pendingRequest === controller) pendingRequest = undefined; }
+  }
+
+  async function load(url: string): Promise<ArticleData> {
+    const cached = cache.get(url);
+    if (cached) return cached;
+    const page = await fetchPage(url);
+    const article = page.querySelector<HTMLElement>('.article-pane');
+    if (!article?.querySelector('h1')) throw new Error('Invalid article page');
+    const data = { html: article.outerHTML, metadata: readMetadata(page) };
+    cache.set(url, data);
+    return data;
+  }
+
+  function savePosition() {
+    if (!activeURL && !reconciling && listingPattern.test(location.pathname)) {
+      history.replaceState({ ...history.state, listingScroll: [scrollX, scrollY] }, '');
     }
-    return request;
+  }
+
+  function desiredListing() {
+    return listingPattern.test(location.pathname)
+      ? new URL(location.pathname.replace(/\/$/, '') + (location.pathname.includes('/page/') ? '/' : ''), location.href).href
+      : history.state?.articleListing || listingURL;
+  }
+
+  async function fadeGrid(opacity: number) {
+    results.style.opacity = String(opacity);
+    if (motion.matches) return;
+    const animation = results.animate([{ opacity: 1 - opacity }, { opacity }],
+      { duration: opacity ? 220 : 130, easing: 'ease-out', fill: 'forwards' });
+    try { await animation.finished; } catch { /* Navigation still completes. */ }
+    animation.cancel();
+  }
+
+  async function scrollToListingTop(url: string) {
+    if (!newPageNavigation || motion.matches) return;
+    const start = scrollY;
+    const began = performance.now();
+    await new Promise<void>(resolve => {
+      function step(now: number) {
+        if (desiredListing() !== url) { resolve(); return; }
+        const progress = Math.min(1, (now - began) / 300);
+        window.scrollTo({ top: start * Math.pow(1 - progress, 3), behavior: 'instant' });
+        if (progress < 1) requestAnimationFrame(step);
+        else resolve();
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  async function changeListing(url: string) {
+    const page = await fetchPage(url);
+    const next = page.querySelector<HTMLElement>('[data-article-results]');
+    if (!next || new URL(next.dataset.listingPath!, url).href !== url) throw new Error('Invalid listing');
+    if (desiredListing() !== url) return;
+    results.setAttribute('aria-busy', 'true');
+    await Promise.all([fadeGrid(0), scrollToListingTop(url)]);
+    if (desiredListing() !== url) {
+      results.style.opacity = '';
+      results.removeAttribute('aria-busy');
+      return;
+    }
+    // Explicitly detach document-level hover listeners before releasing the old grid.
+    results.querySelectorAll<HTMLElement>('[data-liquid="true"]').forEach(unbindLiquidInteraction);
+    const replacement = document.importNode(next, true);
+    results.replaceWith(replacement);
+    results = replacement;
+    results.querySelectorAll<HTMLElement>('[data-liquid="true"]').forEach(element => bindLiquidInteraction(element, motion));
+    listingURL = url;
+    listingTitle = page.title;
+    const pageMetadata = readMetadata(page);
+    metadata.forEach((item, index) => { item.original = pageMetadata.values[index]; });
+    updateMetadata();
+    const position = history.state?.listingScroll;
+    window.scrollTo({ left: position?.[0] || 0, top: position?.[1] || 0, behavior: 'instant' });
+    window.dispatchEvent(new Event('article:restore-listing'));
+    if (newPageNavigation) results.focus({ preventScroll: true });
+    newPageNavigation = false;
+    restorePagePosition = false;
+    await fadeGrid(1);
+    if (status) status.textContent = `Page ${results.dataset.page} of ${results.dataset.totalPages} loaded.`;
   }
 
   async function fadeBackdrop(reverse = false) {
@@ -108,15 +205,11 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     }
   }
 
-  function updateMetadata(page?: Document) {
+  function updateMetadata(page?: PageMetadata) {
     document.title = page?.title || listingTitle;
-    for (const { element, original } of metadata) {
-      const attribute = element.tagName === 'LINK' ? 'href' : 'content';
-      const selector = element.tagName === 'LINK' ? 'link[rel="canonical"]' :
-        element.hasAttribute('name') ? `meta[name="${element.getAttribute('name')}"]` :
-          `meta[property="${element.getAttribute('property')}"]`;
-      element.setAttribute(attribute, page?.querySelector(selector)?.getAttribute(attribute) || original);
-    }
+    metadata.forEach(({ element, original, attribute }, index) => {
+      element.setAttribute(attribute, page?.values[index] || original);
+    });
   }
 
   // Independently rotate the faces so their glass can sample the page behind them.
@@ -192,8 +285,10 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     mount.replaceChildren();
     restoreListing?.();
     restoreListing = undefined;
+    // The return flight has already restored this grid, including direct-entry
+    // centering. Do not jump to an older saved offset after the card lands.
+    if (desiredListing() === listingURL && !currentCard()) restorePagePosition = false;
     document.documentElement.style.overflow = overflow;
-    history.scrollRestoration = scrollRestoration;
     updateMetadata();
     setListingHeading(false);
     restoreDialogFocus(source);
@@ -209,24 +304,47 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     reconciling = true;
     try {
       while (true) {
+        const targetListing = desiredListing();
         const card = currentCard();
-        if (activeURL === card?.href) break;
-        if (activeURL) { await close(); continue; }
-        if (!card) break;
+        if (activeURL && (activeURL !== card?.href || targetListing !== listingURL)) { await close(); continue; }
+        if (targetListing !== listingURL) {
+          if (status) status.textContent = 'Loading page…';
+          try { await changeListing(targetListing); }
+          catch {
+            if (desiredListing() === targetListing) { location.assign(location.href); break; }
+          }
+          continue;
+        }
+        if (!card) {
+          // Rapid Back/Forward may return to the grid already on screen before
+          // its replacement finished loading. Still honor that history entry.
+          if (restorePagePosition) {
+            const position = history.state?.listingScroll;
+            if (position) window.scrollTo({ left: position[0], top: position[1], behavior: 'instant' });
+            if (newPageNavigation) results.focus({ preventScroll: true });
+            restorePagePosition = false;
+            newPageNavigation = false;
+          }
+          if (status?.textContent === 'Loading page…') status.textContent = '';
+          break;
+        }
+        if (activeURL === card.href) break;
         card.setAttribute('aria-busy', 'true');
         if (status) status.textContent = 'Opening article…';
-        let page: Document;
+        let page: ArticleData;
         try { page = await load(card.href); }
         catch {
-          if (currentCard() === card) location.assign(card.href);
-          break;
+          if (currentCard() === card) { location.assign(card.href); break; }
+          continue;
         } finally {
           card.removeAttribute('aria-busy');
           if (status) status.textContent = '';
         }
         if (currentCard() !== card) continue;
-        const heading = showArticle(card, document.importNode(page.querySelector<HTMLElement>('.article-pane')!, true));
-        updateMetadata(page);
+        const template = document.createElement('template');
+        template.innerHTML = page.html;
+        const heading = showArticle(card, template.content.firstElementChild as HTMLElement);
+        updateMetadata(page.metadata);
         await fly();
         if (restoreListing) document.documentElement.style.overflow = overflow;
         heading.focus({ preventScroll: true });
@@ -243,19 +361,30 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
       void reconcile();
     }
   }
-  cards.forEach(card => {
-    // Warm the static article document without blocking ordinary link navigation.
-    const prefetch = () => { void load(card.href).catch(() => {}); };
-    card.addEventListener('pointerenter', prefetch, { once: true });
-    card.addEventListener('focus', prefetch, { once: true });
-    card.addEventListener('click', event => {
-      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      event.preventDefault();
+  document.addEventListener('click', event => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = event.target instanceof Element
+      ? event.target.closest<HTMLAnchorElement>('a[data-article-link], a[data-listing-link]') : null;
+    if (!link || !results.contains(link)) return;
+    event.preventDefault();
+    if (activeURL) return;
+    savePosition();
+    if (link.hasAttribute('data-listing-link')) {
+      if (new URL(link.href).href === location.href) return;
+      newPageNavigation = true;
+      restorePagePosition = true;
+      history.pushState({ listingScroll: [0, 0] }, '', link.href);
+    } else {
       if (reconciling) return;
-      history.pushState({ articleListing: listingURL }, '', card.href);
-      void reconcile();
-    });
+      history.pushState({ articleListing: listingURL, listingScroll: [scrollX, scrollY] }, '', link.href);
+    }
+    pendingRequest?.abort();
+    void reconcile();
   });
+  window.addEventListener('scroll', () => {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(savePosition, 200);
+  }, { passive: true });
   viewer.addEventListener('cancel', event => {
     event.preventDefault();
     // An automatically opened dialog can receive a non-cancelable native close request.
@@ -298,7 +427,12 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
       event.preventDefault(); first?.focus();
     }
   });
-  window.addEventListener('popstate', () => { void reconcile(); });
+  window.addEventListener('popstate', () => {
+    newPageNavigation = false;
+    restorePagePosition = true;
+    pendingRequest?.abort();
+    void reconcile();
+  });
   function finishTransition() {
     flightAnimations.forEach(animation => animation.finish());
     backdropAnimation?.finish();
@@ -313,22 +447,22 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     if (!restoreListing || width !== viewportWidth) finishTransition();
     viewportWidth = width;
   });
-  window.addEventListener('pagehide', () => { history.scrollRestoration = scrollRestoration; });
+  window.addEventListener('pagehide', () => { savePosition(); history.scrollRestoration = originalScrollRestoration; });
   window.addEventListener('pageshow', () => {
-    if (activeURL) history.scrollRestoration = 'manual';
+    history.scrollRestoration = 'manual';
   });
 
   if (initialPane) {
     const card = currentCard();
     if (card) {
       // Keep the pre-rendered article available for Forward/reopening without another fetch.
-      cache.set(card.href, Promise.resolve(document.cloneNode(true) as Document));
+      cache.set(card.href, { html: initialPane.outerHTML, metadata: readMetadata(document) });
       const articleURL = location.href;
       card.scrollIntoView({ block: 'center', behavior: 'instant' });
       if (history.state?.articleListing !== listingURL) {
         // Give direct arrivals the same Back/Forward behavior as a click from the grid.
-        history.replaceState(null, '', listingURL);
-        history.pushState({ articleListing: listingURL }, '', articleURL);
+        history.replaceState({ listingScroll: [scrollX, scrollY] }, '', listingURL);
+        history.pushState({ articleListing: listingURL, listingScroll: [scrollX, scrollY] }, '', articleURL);
       }
       const heading = showArticle(card, initialPane);
       scrim.style.opacity = '1';
@@ -336,5 +470,6 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
       if (restoreListing) document.documentElement.style.overflow = overflow;
       heading.focus({ preventScroll: true });
     }
+    initialPane = null;
   }
 }
