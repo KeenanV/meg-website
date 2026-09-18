@@ -31,6 +31,17 @@ const { kind, entry, listingTitle, listingDescription } = Astro.props;
     overscroll-behavior: contain;
   }
   .article-dialog::backdrop { background: transparent; }
+  /* On touch devices the article becomes the document's scroller, allowing the
+     browser controls to collapse naturally. The listing is frozen behind it. */
+  .article-dialog[data-document-scroll] {
+    position: relative;
+    inset: auto;
+    height: auto;
+    min-height: var(--scene-height, 100lvh);
+    overflow: visible;
+    overscroll-behavior: auto;
+    z-index: 50;
+  }
   .article-dialog[data-initial-article] { z-index: 50; }
   .article-dialog-backdrop {
     position: fixed;
@@ -39,6 +50,11 @@ const { kind, entry, listingTitle, listingDescription } = Astro.props;
     background: rgba(5, 12, 20, .65);
     backdrop-filter: blur(10px);
     opacity: 0;
+  }
+  .article-dialog[data-document-scroll] > .article-dialog-backdrop {
+    /* Paint through the document, including the area behind translucent mobile
+       controls. A fixed backdrop can be clipped to the toolbar-visible viewport. */
+    position: absolute;
   }
   .article-dialog-content { @apply max-w-4xl; position: relative; width: 100%; margin: 0 auto; }
   .article-dialog .article-pane { background: rgba(14, 25, 35, .94); }

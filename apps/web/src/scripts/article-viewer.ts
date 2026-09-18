@@ -1,4 +1,5 @@
 import { restoreDialogFocus } from './input-method';
+import { beginArticleDocumentScroll } from './article-document-scroll';
 
 const dialog = document.querySelector<HTMLDialogElement>('.article-dialog');
 const content = dialog?.querySelector<HTMLElement>('.article-dialog-content');
@@ -37,6 +38,7 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
   let backdropAnimation: Animation | undefined;
   let sourceVisibility = '';
   let closingRequested = false;
+  let restoreListing: (() => void) | undefined;
 
   // Shared links may have a trailing slash, tracking parameters, or a fragment.
   function currentCard() {
@@ -71,7 +73,8 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     history.scrollRestoration = 'manual';
     // Promote the server-rendered open dialog to a modal without an opening animation.
     if (viewer.open) viewer.close();
-    viewer.showModal();
+    restoreListing = beginArticleDocumentScroll(viewer);
+    if (!restoreListing) viewer.showModal();
     viewer.scrollTop = 0;
     activeURL = card.href;
     setListingHeading(true);
@@ -181,10 +184,14 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
   }
 
   async function close() {
+    // Freeze gestures during the return flight, then restore the listing's scroll.
+    document.documentElement.style.overflow = 'hidden';
     await fly(true);
     viewer.close();
     if (source) source.style.visibility = sourceVisibility;
     mount.replaceChildren();
+    restoreListing?.();
+    restoreListing = undefined;
     document.documentElement.style.overflow = overflow;
     history.scrollRestoration = scrollRestoration;
     updateMetadata();
@@ -221,6 +228,7 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
         const heading = showArticle(card, document.importNode(page.querySelector<HTMLElement>('.article-pane')!, true));
         updateMetadata(page);
         await fly();
+        if (restoreListing) document.documentElement.style.overflow = overflow;
         heading.focus({ preventScroll: true });
       }
     } finally { reconciling = false; }
@@ -255,7 +263,11 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     if (!event.cancelable) {
       const scrollTop = viewer.scrollTop;
       queueMicrotask(() => {
-        if (activeURL && !viewer.open) { viewer.showModal(); viewer.scrollTop = scrollTop; }
+        if (activeURL && !viewer.open) {
+          if (restoreListing) viewer.show();
+          else viewer.showModal();
+          viewer.scrollTop = scrollTop;
+        }
       });
     }
     requestClose();
@@ -292,7 +304,15 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     backdropAnimation?.finish();
   }
   motion.addEventListener('change', () => { if (motion.matches) finishTransition(); });
-  window.addEventListener('resize', finishTransition);
+  let viewportWidth = window.innerWidth;
+  window.addEventListener('resize', () => {
+    const width = window.innerWidth;
+    // Locking scroll on dismissal can expand mobile browser controls. Their
+    // height-only resize must not finish the return flight after its first frame.
+    // Still settle geometry-changing rotations/resizes and desktop resizing.
+    if (!restoreListing || width !== viewportWidth) finishTransition();
+    viewportWidth = width;
+  });
   window.addEventListener('pagehide', () => { history.scrollRestoration = scrollRestoration; });
   window.addEventListener('pageshow', () => {
     if (activeURL) history.scrollRestoration = 'manual';
@@ -313,6 +333,7 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
       const heading = showArticle(card, initialPane);
       scrim.style.opacity = '1';
       viewer.removeAttribute('data-initial-article');
+      if (restoreListing) document.documentElement.style.overflow = overflow;
       heading.focus({ preventScroll: true });
     }
   }

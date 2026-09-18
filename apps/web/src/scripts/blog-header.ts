@@ -10,6 +10,7 @@ if (listing && header && logo) {
 
   function render() {
     frame = undefined;
+    if (document.documentElement.hasAttribute('data-article-document-scroll')) return;
     const collapse = reducedMotion.matches ? 0 : Math.min(distance, Math.max(0, window.scrollY - start));
     // The initials fit inside a vertical capsule in the 4600x4000 artwork:
     // radius 800, centered at x=855.6, with endpoints at y=800 and y=3200.
@@ -21,6 +22,7 @@ if (listing && header && logo) {
   }
 
   function measure() {
+    if (document.documentElement.hasAttribute('data-article-document-scroll')) return;
     // Measure the normal-flow wrapper, not the sticky or shrinking header.
     const top = listing!.getBoundingClientRect().top + window.scrollY;
     start = Math.max(0, top - parseFloat(getComputedStyle(header!).top));
@@ -35,6 +37,7 @@ if (listing && header && logo) {
   }, { passive: true });
   window.addEventListener('resize', measure);
   window.addEventListener('pageshow', measure);
+  window.addEventListener('article:restore-listing', measure);
   reducedMotion.addEventListener('change', measure);
   measure();
 }

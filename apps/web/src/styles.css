@@ -3,6 +3,15 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Defaults for values supplied by Layout and mobile-scene after loading. */
+    --page-scroll-y: 0px;
+    --scene-height: 100lvh;
+    --visible-height: 100dvh;
+    --scene-image: none;
+    --scene-image-width: auto;
+    --scene-image-height: 100lvh;
+  }
   [data-liquid] { --mx: 50%; --my: 50%; }
   [data-liquid] > .pointer-events-none { transition-duration: 150ms; }
   [data-liquid-active="true"] > .liquid-highlight { opacity: 1; }
@@ -18,12 +27,15 @@
   .site-background {
     position: fixed;
     inset: 0 0 auto;
-    height: 100vh;
     /* Cover the toolbar-hidden viewport from the outset. Unlike dvh, lvh stays
        constant while mobile browser controls expand/collapse during scrolling. */
     height: 100lvh;
     pointer-events: none;
     z-index: -10;
+  }
+  @supports not (height: 100lvh) {
+    :root { --scene-height: 100vh; --visible-height: 100vh; --scene-image-height: 100vh; }
+    .site-background { height: 100vh; }
   }
   .glass-surface {
     background: rgba(10, 19, 27, 0.78);
