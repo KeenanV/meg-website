@@ -1,3 +1,5 @@
+import { restoreDialogFocus } from './input-method';
+
 const dialog = document.querySelector<HTMLDialogElement>('.article-dialog');
 const content = dialog?.querySelector<HTMLElement>('.article-dialog-content');
 const backdrop = dialog?.querySelector<HTMLElement>('.article-dialog-backdrop');
@@ -55,6 +57,7 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
   function showArticle(card: HTMLAnchorElement, article: HTMLElement) {
     source = card;
     sourceVisibility = card.style.visibility;
+    card.removeAttribute('data-liquid-active');
     source.style.visibility = 'hidden'; // Reserve the source's grid cell until it returns.
     pane = article;
     const heading = pane.querySelector('h1')!;
@@ -186,7 +189,7 @@ if (dialog && content && backdrop && typeof dialog.showModal === 'function') {
     history.scrollRestoration = scrollRestoration;
     updateMetadata();
     setListingHeading(false);
-    source?.focus({ preventScroll: true });
+    restoreDialogFocus(source);
     pane = undefined;
     source = undefined;
     activeURL = undefined;

@@ -6,9 +6,9 @@ const link = safeHref(href);
 const Tag = link ? 'a' : 'div';
 ---
 <Tag href={link} class:list={['glass-surface group relative block overflow-hidden', padding && 'p-4',
-  hover && 'transition duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-xl', className]}
-  data-liquid={hover && liquid ? 'true' : undefined} data-article-link={article || undefined}>
-  {hover && liquid && <span aria-hidden="true" class="pointer-events-none absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100"
+  hover && 'transition duration-200 motion-safe:data-[liquid-active=true]:-translate-y-0.5 data-[liquid-active=true]:shadow-xl', className]}
+  data-liquid={hover ? 'true' : undefined} data-article-link={article || undefined}>
+  {hover && liquid && <span aria-hidden="true" class="pointer-events-none absolute inset-0 opacity-0 transition-opacity liquid-highlight"
     style="background: radial-gradient(300px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.12), transparent 60%);"></span>}
   <div class:list={['relative', article && 'flex h-full flex-col']}><slot /></div>
 </Tag>

@@ -19,17 +19,17 @@ const sections = [
     <div class="flex flex-col gap-7 p-7 md:flex-row md:items-center md:p-10">
       {about?.headshot && <img src={urlFor(about.headshot).width(384).height(576).fit('crop').quality(85).url()}
         alt={about.headshot.alt || about.name || 'Meg Van Deusen'} width="384" height="576"
-        class="h-72 w-48 rounded-2xl border border-white/15 object-cover" decoding="async" />}
-      <div>
-        <h1 class="page-heading">{about?.name || 'Meg Van Deusen'}</h1>
+        class="mx-auto h-72 w-48 shrink-0 rounded-2xl border border-white/15 object-cover md:mx-0" decoding="async" />}
+      <div class="min-w-0 text-center md:text-left">
+        <h1 class="page-heading about-name">{about?.name || 'Meg Van Deusen'}</h1>
         <p class="mt-4 text-white/80">Clinical Psychologist · Author</p>
         <GlassButton href="/contact" class="mt-5">Contact</GlassButton>
       </div>
     </div>
     {sections.map(section => (
       <details class="border-t border-white/15" id={section.id} data-animated-disclosure>
-        <summary class="group relative overflow-hidden cursor-pointer px-7 py-6 text-center transition hover:bg-white/10 md:px-10" data-liquid="true">
-          <span aria-hidden="true" class="pointer-events-none absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100"
+        <summary class="group relative overflow-hidden cursor-pointer px-7 py-6 text-center transition data-[liquid-active=true]:bg-white/10 md:px-10" data-liquid="true">
+          <span aria-hidden="true" class="pointer-events-none absolute inset-0 opacity-0 transition-opacity liquid-highlight"
             style="background: radial-gradient(300px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.12), transparent 60%);"></span>
           <h2 class="relative text-2xl font-semibold">{section.title}</h2>
           <svg class="relative disclosure-chevron mx-auto mt-3 h-5 w-5 text-white/80 transition-transform duration-300 ease-in-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -42,6 +42,12 @@ const sections = [
     {!sections.length && <p class="px-7 pb-8 text-white/80 md:px-10">More about Meg will be available soon.</p>}
   </StaticGlassCard>
 </Layout>
+
+<style>
+  @media (max-width: 767px) {
+    .about-name { font-size: clamp(1.125rem, 6vw, 1.75rem); white-space: nowrap; }
+  }
+</style>
 
 <script>
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');

@@ -31,7 +31,7 @@ const images = await Promise.all([768, 1280, 1920].map(width =>
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefined;
 ---
 <!doctype html>
-<html lang="en">
+<html lang="en" data-scene-aspect={source.width / source.height} style={`--scene-image: url("${images[2].src}")`}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -48,13 +48,16 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefin
     {canonical && <meta property="og:url" content={canonical} />}
     <meta name="twitter:card" content="summary" />
   </head>
-  <body class="min-h-screen bg-zinc-950 text-white">
+  <body class="min-h-screen text-white">
     <a class="skip-link" href="#main-content">Skip to content</a>
-    <div class="pointer-events-none fixed inset-0 -z-10" aria-hidden="true">
+    <div class="site-background" aria-hidden="true">
+      <picture>
+      <source media="(max-width: 767px), (any-pointer: coarse)" srcset={images[2].src} />
       <img src={images[2].src}
         srcset={images.map(image => image.src + ' ' + image.attributes.width + 'w').join(', ')}
         sizes="100vw" width={images[2].attributes.width} height={images[2].attributes.height}
         class="absolute inset-0 h-full w-full object-cover opacity-80" alt="" fetchpriority="high" />
+      </picture>
       <div class="absolute inset-0 bg-slate-900/40"></div>
     </div>
     <MobileNav />
@@ -63,24 +66,12 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefin
       <div class:list={['mx-auto', widths[contentWidth]]}><slot /></div>
     </main>
     <script>
+      import '../scripts/mobile-scene';
+      import '../scripts/input-method';
+      import { bindLiquidInteraction } from '../scripts/liquid-interaction';
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
       document.querySelectorAll<HTMLElement>('[data-liquid="true"]').forEach((element) => {
-        let frame: number | undefined;
-        element.addEventListener('pointermove', (event) => {
-          if (reducedMotion.matches || event.pointerType === 'touch') return;
-          if (frame !== undefined) cancelAnimationFrame(frame);
-          frame = requestAnimationFrame(() => {
-            const rect = element.getBoundingClientRect();
-            element.style.setProperty('--mx', ((event.clientX - rect.left) / rect.width) * 100 + '%');
-            element.style.setProperty('--my', ((event.clientY - rect.top) / rect.height) * 100 + '%');
-            frame = undefined;
-          });
-        });
-        element.addEventListener('pointerleave', () => {
-          if (frame !== undefined) cancelAnimationFrame(frame);
-          frame = undefined;
-          // Keep the last position while opacity fades; resetting it causes a center flash.
-        });
+        bindLiquidInteraction(element, reducedMotion);
       });
     </script>
   </body>

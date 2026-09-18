@@ -3,58 +3,35 @@ import SideNav from './SideNav.astro';
 ---
 <header class="sticky top-0 z-40 border-b border-white/15 bg-zinc-950/80 px-5 py-3 backdrop-blur-xl md:hidden">
   <div class="flex items-center justify-between gap-4">
-    <a href="/" class="font-semibold tracking-tight">Meg Van Deusen</a>
-    <button id="open-menu" type="button" hidden aria-controls="mobile-menu" aria-expanded="false" aria-haspopup="dialog"
-      class="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-lg leading-6">Menu</button>
+    <button id="open-menu" type="button" hidden aria-label="Open navigation" aria-controls="mobile-menu" aria-expanded="false" aria-haspopup="dialog"
+      class="mobile-menu-icon">
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+        <path d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+    <a href="/" class="ml-auto font-semibold tracking-tight">Meg Van Deusen</a>
   </div>
   <noscript><SideNav compact /></noscript>
 </header>
-<dialog id="mobile-menu" aria-labelledby="mobile-menu-title" class="mobile-dialog glass-surface fixed inset-y-0 left-0 z-50 p-0 text-white">
-  <div class="flex items-center justify-between border-b border-white/15 px-5 py-4">
-    <h2 id="mobile-menu-title" class="font-semibold">Navigation</h2>
-    <button id="close-menu" autofocus type="button" class="rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-lg leading-6">Close</button>
+<div id="mobile-menu" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" hidden class="mobile-dialog text-white">
+  <div class="mobile-menu-backdrop" aria-hidden="true"></div>
+  <div class="mobile-menu-panel glass-surface">
+    <div class="mobile-menu-content">
+      <div class="flex items-center justify-between gap-3 border-b border-white/15 px-5 py-5">
+        <div>
+          <h2 id="mobile-menu-title" class="text-lg font-semibold tracking-tight"><a href="/">Meg Van Deusen</a></h2>
+          <p class="mt-1 text-sm text-white/80">Clinical Psychologist</p>
+        </div>
+        <button id="close-menu" autofocus type="button" aria-label="Close navigation" class="mobile-menu-icon">
+          <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m15 5-7 7 7 7" />
+          </svg>
+        </button>
+      </div>
+      <SideNav compact showBrand={false} />
+    </div>
   </div>
-  <SideNav compact />
-</dialog>
+</div>
 <script>
-  const trigger = document.querySelector<HTMLButtonElement>('#open-menu');
-  const close = document.querySelector<HTMLButtonElement>('#close-menu');
-  const dialog = document.querySelector<HTMLDialogElement>('#mobile-menu');
-  if (trigger && close && dialog) {
-    const desktop = window.matchMedia('(min-width: 768px)');
-    let previousOverflow = '';
-    trigger.hidden = false;
-    trigger.addEventListener('click', () => {
-      previousOverflow = document.documentElement.style.overflow;
-      dialog.showModal();
-      trigger.setAttribute('aria-expanded', 'true');
-      document.documentElement.style.overflow = 'hidden';
-    });
-    close.addEventListener('click', () => dialog.close());
-    dialog.addEventListener('keydown', (event) => {
-      if (event.key !== 'Tab') return;
-      const controls = Array.from(dialog.querySelectorAll<HTMLElement>('button:not([disabled]), a[href]'));
-      const first = controls[0];
-      const last = controls[controls.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
-      }
-    });
-    dialog.querySelectorAll('a').forEach(link => link.addEventListener('click', () => dialog.close()));
-    dialog.addEventListener('click', (event) => {
-      const rect = dialog.getBoundingClientRect();
-      if (event.target === dialog && (event.clientX < rect.left || event.clientX > rect.right ||
-          event.clientY < rect.top || event.clientY > rect.bottom)) dialog.close();
-    });
-    dialog.addEventListener('close', () => {
-      trigger.setAttribute('aria-expanded', 'false');
-      document.documentElement.style.overflow = previousOverflow;
-      if (!desktop.matches) trigger.focus();
-    });
-    desktop.addEventListener('change', () => { if (desktop.matches && dialog.open) dialog.close(); });
-  }
+  import '../scripts/mobile-nav';
 </script>

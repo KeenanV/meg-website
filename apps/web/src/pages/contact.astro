@@ -59,7 +59,7 @@ import GlassButton from '../components/GlassButton.astro';
     opacity: 0;
     transition: opacity 200ms ease;
   }
-  .contact-field:hover::after { opacity: 1; }
+  .contact-field[data-liquid-active="true"]::after { opacity: 1; }
   .contact-input {
     display: block;
     width: 100%;
@@ -74,7 +74,7 @@ import GlassButton from '../components/GlassButton.astro';
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
     transition: border-color 200ms ease, background-color 200ms ease, box-shadow 200ms ease;
   }
-  .contact-input:hover { border-color: rgba(255, 255, 255, 0.35); }
+  .contact-field[data-liquid-active="true"] .contact-input:not(:focus) { border-color: rgba(255, 255, 255, 0.35); }
   .contact-input:focus {
     outline: none;
     border-color: rgba(255, 255, 255, 0.6);
