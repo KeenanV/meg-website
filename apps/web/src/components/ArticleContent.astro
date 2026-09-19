@@ -5,15 +5,15 @@ import type { Article } from '../lib/content';
 import { portableTextToHtml } from '../lib/portableText';
 import { richTextImageUrl } from '../lib/sanity';
 import { formatDate } from '../lib/dates';
-interface Props { entry: Article; kind: 'blog' | 'news' }
-const { entry, kind } = Astro.props;
+interface Props { entry: Article; kind: 'blog' | 'news'; listingPath: string }
+const { entry, kind, listingPath } = Astro.props;
 const html = portableTextToHtml(entry.body, richTextImageUrl);
 const date = kind === 'blog' ? entry.publishedAt : entry.date;
 ---
 <StaticGlassCard class="article-pane">
   <article data-article-kind={kind}>
     <header class="p-7 md:p-10">
-      <a href={'/' + kind} data-article-close class="inline-block rounded-lg text-sm text-emerald-100 underline underline-offset-4">
+      <a href={listingPath} data-article-close class="inline-block rounded-lg text-sm text-emerald-100 underline underline-offset-4">
         <span aria-hidden="true">← </span>{kind === 'blog' ? 'All writing' : 'All news'}
       </a>
       {formatDate(date) && <p class="mt-6 text-sm text-white/80"><time datetime={date}>{formatDate(date)}</time></p>}

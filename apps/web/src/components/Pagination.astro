@@ -1,0 +1,33 @@
+---
+import { listingPath, pageLinks, type ArticleKind } from '../lib/pagination';
+interface Props { kind: ArticleKind; page: number; totalPages: number }
+const { kind, page, totalPages } = Astro.props;
+---
+{totalPages > 1 && <nav class="pagination" aria-label={kind === 'blog' ? 'Blog pages' : 'News pages'}>
+  {page > 1 ? <a href={listingPath(kind, page - 1)} data-listing-link data-liquid="true" rel="prev" aria-label="Previous page">← <span>Previous</span></a>
+    : <span class="pagination-disabled" aria-disabled="true">← <span>Previous</span></span>}
+  <div class="pagination-numbers">
+    {pageLinks(page, totalPages).map(value => value === 'gap'
+      ? <span class="pagination-gap" aria-hidden="true">…</span>
+      : <a href={listingPath(kind, value)} data-listing-link data-liquid="true"
+          aria-label={`Page ${value}`} aria-current={value === page ? 'page' : undefined}>{value}</a>)}
+  </div>
+  {page < totalPages ? <a href={listingPath(kind, page + 1)} data-listing-link data-liquid="true" rel="next" aria-label="Next page"><span>Next</span> →</a>
+    : <span class="pagination-disabled" aria-disabled="true"><span>Next</span> →</span>}
+</nav>}
+<style>
+  .pagination { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: .75rem; margin-top: 2rem; }
+  .pagination-numbers { display: flex; gap: .5rem; align-items: center; }
+  a, .pagination-disabled { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-width: 44px; min-height: 44px; padding: .5rem .8rem; border-radius: 1rem; border: 1px solid rgb(255 255 255 / .15); font-size: 1.125rem; background: rgb(255 255 255 / .07); }
+  a::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgb(255 255 255 / .2), transparent 65%); opacity: 0; transition: opacity .25s; pointer-events: none; }
+  a[data-liquid-active="true"]::before { opacity: 1; }
+  a[aria-current="page"] { background: rgb(255 255 255 / .2); border-color: rgb(255 255 255 / .4); }
+  .pagination-disabled { opacity: .4; }
+  .pagination-gap { padding: 0 .2rem; }
+  @media (max-width: 480px) {
+    .pagination { gap: .5rem; }
+    .pagination > a > span, .pagination-disabled > span { display: none; }
+    .pagination-numbers { gap: .25rem; }
+    a, .pagination-disabled { padding-inline: .5rem; }
+  }
+</style>
