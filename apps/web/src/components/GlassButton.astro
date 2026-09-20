@@ -5,6 +5,8 @@ const {
   class: className = "",
   liquid = true,
   target,
+  disabled = false,
+  contentClass = '',
 } = Astro.props;
 
 const base =
@@ -29,10 +31,10 @@ const classes = `${base} ${styles} ${className}`.trim();
       style="background: linear-gradient(to right, transparent, rgba(255,255,255,0.12), transparent);"
   ></span>
 
-  <span class="relative"><slot /></span>
+  <span class:list={['relative', contentClass]}><slot /></span>
 </a>
     ) : (
-<button class={classes} data-liquid={liquid ? "true" : "false"} type="button">
+<button class={classes} data-liquid={liquid ? "true" : "false"} type="button" disabled={disabled}>
     <span
         class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 liquid-highlight"
         style="background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12), transparent 45%);"
@@ -42,6 +44,6 @@ const classes = `${base} ${styles} ${className}`.trim();
       style="background: linear-gradient(to right, transparent, rgba(255,255,255,0.12), transparent);"
   ></span>
 
-  <span class="relative"><slot /></span>
+  <span class:list={['relative', contentClass]}><slot /></span>
 </button>
     )}

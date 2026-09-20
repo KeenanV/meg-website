@@ -3,7 +3,7 @@ import {structureTool} from 'sanity/structure';
 import {visionTool} from '@sanity/vision';
 import { schemaTypes } from './schemas';
 import { structure } from './structure';
-const SINGLETON_TYPES = new Set(['siteSettings', 'about'])
+const SINGLETON_TYPES = new Set(['siteSettings', 'about', 'linksPage'])
 
 export default defineConfig({
   name: 'default',

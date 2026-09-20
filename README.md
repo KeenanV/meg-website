@@ -88,7 +88,7 @@ The viewer keeps at most five recently opened articles as HTML and metadata, rel
 
 - Local hardening and a consistent liquid-glass design come first.
 - `/contact` has a glass form with Name, Email, and Message fields, linked from navigation, Home, and About. Email delivery is not connected yet: Send is a clickable preview button with no action, a visible availability note explains this, and the form prevents submission. No recipient email address is embedded in the page. Connect a server-side email service, validate submissions, and add abuse protection and delivery feedback before wiring up Send.
-- A separate links page will collect the website, socials, and book purchase destinations in the same visual style.
+- `/links` is a standalone glass profile page with no sidebar or mobile navigation. In Studio, open **Links Page** to edit the display name, professional title, optional portrait, and link buttons. The name and portrait default to About. Drag links to reorder them; each has editable button text, an optional destination, and an icon picker (including a custom image option). Missing destinations appear as disabled “Coming soon” buttons. Internal destinations use paths such as `/blog`; external destinations use full URLs. Publish edits and rebuild the static site to show them publicly.
 - GCP account, resources, DNS, HTTPS, build triggers, publish webhooks, and a hosted Studio are later work. `cloudbuild.yaml` is an unverified draft, not a ready-to-run deployment.
 - A reader database, accounts, comments, and private messaging are a later phase, not launch requirements.
 

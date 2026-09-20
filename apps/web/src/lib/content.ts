@@ -13,6 +13,12 @@ export interface About {
   name?: string; headshot?: ContentImage;
   about?: RichText; approach?: RichText; feesInsurance?: RichText;
 }
+export interface ProfileLink {
+  _key: string; label: string; url?: string; icon?: string; customIcon?: ContentImage;
+}
+export interface LinksPage {
+  name?: string; title?: string; portrait?: ContentImage; links?: ProfileLink[];
+}
 export interface Article {
   title: string; slug: string; cover?: ContentImage;
   excerpt?: string; publishedAt?: string; date?: string; body?: RichText;
