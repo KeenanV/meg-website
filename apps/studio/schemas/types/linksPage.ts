@@ -12,7 +12,7 @@ export default defineType({
     defineField({ name: 'portrait', type: 'image', title: 'Portrait', options: { hotspot: true },
       fields: [imageAlt], description: 'Optional. Uses the About portrait when empty.' }),
     defineField({ name: 'links', type: 'array', title: 'Links',
-      description: 'Drag items to reorder them. Add or remove links here, then publish your changes. The website updates on its next build.',
+      description: 'Drag items to reorder them. LinkedIn, Instagram, and Bluesky destinations also power the social icons in navigation and About. Publish changes, then rebuild the website to display them.',
       of: [defineArrayMember({
         name: 'profileLink', title: 'Link', type: 'object',
         fields: [

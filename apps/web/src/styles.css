@@ -54,7 +54,7 @@
   .mobile-dialog { position: absolute; inset: var(--page-scroll-y, 0px) 0 auto; z-index: 60; margin: 0; padding: 0; border: 0; width: 100%; max-width: none; height: var(--scene-height, 100lvh); max-height: none; overflow: hidden; background: transparent; }
   .mobile-menu-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; }
   .mobile-menu-panel { position: relative; width: min(20rem, calc(100% - 1.5rem)); height: 100%; overflow: hidden; border-radius: 0 1.5rem 1.5rem 0; transform: translateX(-100%); }
-  .mobile-menu-content { height: min(100%, var(--visible-height, 100dvh)); overflow-y: auto; overscroll-behavior: contain; padding-bottom: env(safe-area-inset-bottom); }
+  .mobile-menu-content { display: flex; flex-direction: column; height: min(100%, var(--visible-height, 100dvh)); overflow-y: auto; overscroll-behavior: contain; padding-bottom: env(safe-area-inset-bottom); }
   .mobile-menu-icon { @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/10; }
   summary::-webkit-details-marker { display: none; }
   summary { list-style: none; }

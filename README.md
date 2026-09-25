@@ -70,6 +70,8 @@ npm audit --prefix apps/studio
 
 Studio has scoped security overrides documented in [HARDENING.md](HARDENING.md). Recheck them when upgrading Sanity.
 
+The latest dependency review is recorded in [DEPENDENCIES.md](DEPENDENCIES.md).
+
 ## Images and content
 
 Original photography is preserved in `design-assets/backgrounds`, outside the public output. `npm run images:prepare --prefix apps/web` generates the three smaller WebP source backgrounds. This also runs before website development and builds. Astro creates fingerprinted responsive variants from those sources.
@@ -89,6 +91,7 @@ The viewer keeps at most five recently opened articles as HTML and metadata, rel
 - Local hardening and a consistent liquid-glass design come first.
 - `/contact` has a glass form with Name, Email, and Message fields, linked from navigation, Home, and About. Email delivery is not connected yet: Send is a clickable preview button with no action, a visible availability note explains this, and the form prevents submission. No recipient email address is embedded in the page. Connect a server-side email service, validate submissions, and add abuse protection and delivery feedback before wiring up Send.
 - `/links` is a standalone glass profile page with no sidebar or mobile navigation. In Studio, open **Links Page** to edit the display name, professional title, optional portrait, and link buttons. The name and portrait default to About. Drag links to reorder them; each has editable button text, an optional destination, and an icon picker (including a custom image option). Missing destinations appear as disabled “Coming soon” buttons. Internal destinations use paths such as `/blog`; external destinations use full URLs. Publish edits and rebuild the static site to show them publicly.
+- Navigation and About reuse the LinkedIn, Instagram, and Bluesky destinations from **Links Page**, identified by their icon selection. Edit these URLs there once to update every location. Social icons with missing or invalid destinations are omitted; other link types remain exclusive to `/links`.
 - GCP account, resources, DNS, HTTPS, build triggers, publish webhooks, and a hosted Studio are later work. `cloudbuild.yaml` is an unverified draft, not a ready-to-run deployment.
 - A reader database, accounts, comments, and private messaging are a later phase, not launch requirements.
 

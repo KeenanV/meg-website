@@ -1,5 +1,8 @@
 ---
 import SideNav from './SideNav.astro';
+import type { ProfileLink } from '../lib/content';
+interface Props { socials?: ProfileLink[] }
+const { socials = [] } = Astro.props;
 ---
 <header class="sticky top-0 z-40 border-b border-white/15 bg-zinc-950/80 px-5 py-3 backdrop-blur-xl md:hidden">
   <div class="flex items-center justify-between gap-4">
@@ -11,13 +14,13 @@ import SideNav from './SideNav.astro';
     </button>
     <a href="/" class="ml-auto font-semibold tracking-tight">Meg Van Deusen</a>
   </div>
-  <noscript><SideNav compact /></noscript>
+  <noscript><SideNav compact socials={socials} /></noscript>
 </header>
 <div id="mobile-menu" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" hidden class="mobile-dialog text-white">
   <div class="mobile-menu-backdrop" aria-hidden="true"></div>
   <div class="mobile-menu-panel glass-surface">
     <div class="mobile-menu-content">
-      <div class="flex items-center justify-between gap-3 border-b border-white/15 px-5 py-5">
+      <div class="flex shrink-0 items-center justify-between gap-3 border-b border-white/15 px-5 py-5">
         <div>
           <h2 id="mobile-menu-title" class="text-lg font-semibold tracking-tight"><a href="/">Meg Van Deusen</a></h2>
           <p class="mt-1 text-sm text-white/80">Clinical Psychologist</p>
@@ -28,7 +31,7 @@ import SideNav from './SideNav.astro';
           </svg>
         </button>
       </div>
-      <SideNav compact showBrand={false} />
+      <SideNav compact showBrand={false} socials={socials} />
     </div>
   </div>
 </div>
