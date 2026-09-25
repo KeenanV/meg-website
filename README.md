@@ -1,6 +1,6 @@
 # Meg's website
 
-Astro's static public website lives in `apps/web`; Sanity Studio lives in `apps/studio`. Each app has its own lockfile. The root lockfile pins Firebase deployment tooling. Google Cloud is not needed for local development.
+Astro's static public website lives in `apps/web`; Sanity Studio lives in `apps/studio`; the contact and publication backend lives in `apps/backend`. Each app has its own lockfile. The root lockfile pins Firebase deployment tooling. Google Cloud is not needed to develop the website locally.
 
 ## Local setup
 
@@ -12,6 +12,7 @@ nvm use
 npm ci
 npm ci --prefix apps/web
 npm ci --prefix apps/studio
+npm ci --prefix apps/backend
 ```
 
 If nvm is not loaded on this laptop, run `source /opt/homebrew/opt/nvm/nvm.sh` first. That is the Homebrew installation; the older `~/.nvm/nvm.sh` symlink points at an obsolete location.
@@ -62,12 +63,13 @@ npm run preview -- stop
 
 Stop the preview before starting the development server on the same port. Neither building nor previewing deploys anything.
 
-Audit all three lockfiles with:
+Audit all four lockfiles with:
 
 ```sh
 npm audit
 npm audit --prefix apps/web
 npm audit --prefix apps/studio
+npm audit --prefix apps/backend
 ```
 
 Studio has scoped security overrides documented in [HARDENING.md](HARDENING.md). Recheck them when upgrading Sanity.
@@ -109,10 +111,10 @@ Both archives show up to 12 cards per page. `/blog` and `/news` are the first pa
 The viewer keeps at most five recently opened articles as HTML and metadata, releases replaced grids and their event listeners, and does not prefetch articles on hover. Only the current grid is retained; older pages can be fetched again using the browser's normal HTTP cache. Search is deferred until after launch.
 
 - Local hardening and a consistent liquid-glass design come first.
-- `/contact` has a glass form with Name, Email, and Message fields, linked from navigation, Home, and About. Email delivery is not connected yet: Send is a clickable preview button with no action, a visible availability note explains this, and the form prevents submission. No recipient email address is embedded in the page. Connect a server-side email service, validate submissions, and add abuse protection and delivery feedback before wiring up Send.
+- `/contact` sends Name, Email, and Message through Cloud Run and Resend when both public contact settings are configured. The preview sends to the owner's test inbox until launch. The recipient and provider key stay server-side. Google reCAPTCHA loads on submission; validation, rate limits, retry deduplication, and sending/error/success states protect delivery. Local `.env` defaults keep sending unavailable; test real delivery on the HTTPS preview. See [DEPLOYMENT.md](DEPLOYMENT.md).
 - `/links` is a standalone glass profile page with no sidebar or mobile navigation. In Studio, open **Links Page** to edit the display name, professional title, optional portrait, and link buttons. The name and portrait default to About. Drag links to reorder them; each has editable button text, an optional destination, and an icon picker (including a custom image option). Missing destinations appear as disabled “Coming soon” buttons. Internal destinations use paths such as `/blog`; external destinations use full URLs. Publish edits and rebuild the static site to show them publicly.
 - Navigation and About reuse the LinkedIn, Instagram, and Bluesky destinations from **Links Page**, identified by their icon selection. Edit these URLs there once to update every location. Social icons with missing or invalid destinations are omitted; other link types remain exclusive to `/links`.
-- Firebase Hosting preview and hosted Studio are configured. GitHub workflows check pull requests and deploy previews after merges to master once the workflows are merged. Custom-domain DNS/HTTPS, publication webhooks, and contact delivery remain launch work. The old Cloud Build draft has been replaced by the GitHub workflows.
+- Firebase Hosting preview and hosted Studio are configured. GitHub workflows check pull requests and deploy previews after merges to master and signed Sanity publication events. Custom-domain DNS/HTTPS, sender-domain verification, and switching the contact recipient remain launch work. The old Cloud Build draft has been replaced by the GitHub workflows.
 - A reader database, accounts, comments, and private messaging are a later phase, not launch requirements.
 
 No placeholder production domain is emitted. When a domain is chosen, provide `SITE_URL` to the build process to enable canonical URLs, then finish sitemap, sharing imagery, hosting headers, and redirects as part of launch preparation.

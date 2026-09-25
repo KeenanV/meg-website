@@ -2,6 +2,9 @@
 import Layout from '../layouts/Layout.astro';
 import StaticGlassCard from '../components/StaticGlassCard.astro';
 import GlassButton from '../components/GlassButton.astro';
+const endpoint = import.meta.env.PUBLIC_CONTACT_API_URL || '';
+const siteKey = import.meta.env.PUBLIC_RECAPTCHA_SITE_KEY || '';
+const enabled = Boolean(endpoint && siteKey);
 ---
 <Layout title="Contact" description="Contact Meg Van Deusen for questions, scheduling, availability, or to share your thoughts.">
   <StaticGlassCard class="p-7 md:p-10">
@@ -12,7 +15,11 @@ import GlassButton from '../components/GlassButton.astro';
       </p>
     </header>
 
-    <form id="contact-form" method="post" aria-labelledby="contact-title" aria-describedby="contact-status" class="mt-8 space-y-6">
+    <form id="contact-form" method="post" data-endpoint={endpoint} data-site-key={siteKey} aria-labelledby="contact-title" aria-describedby="contact-status" class="mt-8 space-y-6">
+      <div class="contact-trap" aria-hidden="true" inert>
+        <label for="contact-website">Leave this field empty</label>
+        <input id="contact-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+      </div>
       <div>
         <label for="contact-name" class="mb-2 block text-sm font-medium text-white/90">Name</label>
         <div class="contact-field" data-liquid="true">
@@ -35,19 +42,23 @@ import GlassButton from '../components/GlassButton.astro';
         </div>
       </div>
       <div class="flex flex-col items-start gap-3 border-t border-white/15 pt-6">
-        <GlassButton>Send message</GlassButton>
-        <p id="contact-status" class="text-sm text-white/70">Messaging will be available soon.</p>
+        <GlassButton type="submit" disabled={true} class="disabled:cursor-wait disabled:opacity-60">Send message</GlassButton>
+        <p id="contact-status" role="status" aria-live="polite" class="text-sm text-white/70">{enabled ? 'Loading contact form…' : 'Messaging will be available soon.'}</p>
+        {enabled && <p class="text-xs leading-relaxed text-white/60">
+          This form is protected by reCAPTCHA. Google’s <a href="https://policies.google.com/privacy" class="underline">Privacy Policy</a> and <a href="https://policies.google.com/terms" class="underline">Terms of Service</a> apply.
+        </p>}
+        <noscript><p class="text-sm text-white/70">Please enable JavaScript to send a message.</p></noscript>
       </div>
     </form>
   </StaticGlassCard>
 </Layout>
 
 <script>
-  // Keep entered text local until a server-side email delivery endpoint is configured.
-  document.querySelector('#contact-form')?.addEventListener('submit', event => event.preventDefault());
+  import '../scripts/contact-form';
 </script>
 
 <style>
+  .contact-trap { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .contact-field { position: relative; border-radius: 1rem; }
   .contact-field::after {
     content: '';

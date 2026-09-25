@@ -6,6 +6,7 @@ const {
   liquid = true,
   target,
   disabled = false,
+  type = 'button',
   contentClass = '',
 } = Astro.props;
 
@@ -34,7 +35,7 @@ const classes = `${base} ${styles} ${className}`.trim();
   <span class:list={['relative', contentClass]}><slot /></span>
 </a>
     ) : (
-<button class={classes} data-liquid={liquid ? "true" : "false"} type="button" disabled={disabled}>
+<button class={classes} data-liquid={liquid ? "true" : "false"} type={type} disabled={disabled}>
     <span
         class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 liquid-highlight"
         style="background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.12), transparent 45%);"
