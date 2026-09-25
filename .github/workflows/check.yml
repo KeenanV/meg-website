@@ -19,6 +19,8 @@ jobs:
       PUBLIC_SANITY_PROJECT_ID: ap0mc9ri
       PUBLIC_SANITY_DATASET: production
       SITE_URL: https://megvandeusen.com
+      PUBLIC_CONTACT_API_URL: https://website-backend-348807509213.us-west1.run.app/contact
+      PUBLIC_RECAPTCHA_SITE_KEY: 6LdoLc8tAAAAAKmmIu7i3h3CrQPqIl5R-HAISA0Z
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -31,7 +33,9 @@ jobs:
             package-lock.json
             apps/web/package-lock.json
             apps/studio/package-lock.json
+            apps/backend/package-lock.json
       - run: npm ci
       - run: npm ci --prefix apps/web
       - run: npm ci --prefix apps/studio
+      - run: npm ci --prefix apps/backend
       - run: npm run verify
