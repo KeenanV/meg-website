@@ -1,7 +1,5 @@
 import {StructureBuilder} from 'sanity/structure'
 
-const SINGLETON_TYPES = new Set(['siteSettings', 'about'])
-
 export const structure = (S: StructureBuilder) =>
     S.list()
     .title("Meg's Studio")
@@ -27,6 +25,16 @@ export const structure = (S: StructureBuilder) =>
           .title('About')
       ),
 
+      S.listItem()
+      .title('Links Page')
+      .id('linksPage')
+      .child(
+          S.document()
+          .schemaType('linksPage')
+          .documentId('linksPage')
+          .title('Links Page')
+      ),
+
       S.divider(),
 
       // Collections
@@ -34,10 +42,4 @@ export const structure = (S: StructureBuilder) =>
       S.documentTypeListItem('blogPost').title('Blog Posts'),
       S.documentTypeListItem('newsItem').title('News'),
 
-      // Optional: expose everything else (handy during development)
-      // S.divider(),
-      // ...S.documentTypeListItems().filter((item) => {
-      //   const id = item.getId()
-      //   return id ? !SINGLETON_TYPES.has(id) : true
-      // }),
     ])
