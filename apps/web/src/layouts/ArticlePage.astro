@@ -52,13 +52,9 @@ const description = entry
   <div class="article-grid grid gap-5 md:grid-cols-2 lg:grid-cols-3">
     {entries.map((item, index) => (
       <GlassCard href={'/' + kind + '/' + item.slug} padding={false} article>
-        {item.cover && (isBlog
-          ? <SanityImage image={item.cover} alt="" width={840} height={525}
+        {item.cover && <SanityImage image={item.cover} alt="" width={840} height={525}
               sizes="(min-width: 1280px) 360px, (min-width: 768px) 45vw, 100vw" priority={index < 3}
-              class="aspect-[8/5] w-full shrink-0 object-cover" />
-          : <div class="aspect-[8/5] shrink-0 bg-white/95 p-4"><SanityImage image={item.cover} alt="" width={840}
-              sizes="(min-width: 1280px) 360px, (min-width: 768px) 45vw, 100vw" priority={index < 3}
-              class="h-full w-full object-contain" /></div>)}
+              class="aspect-[8/5] w-full shrink-0 object-cover" />}
         <div class="flex flex-1 flex-col p-6">
           {formatDate(isBlog ? item.publishedAt : item.date) &&
             <time datetime={isBlog ? item.publishedAt : item.date} class="text-xs text-emerald-100">
