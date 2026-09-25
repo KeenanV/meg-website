@@ -3,7 +3,7 @@ import { getImage } from 'astro:assets';
 import type { ContentImage } from '../lib/content';
 import { linkIconName } from '../../../../shared/link-icons';
 import SanityImage from './SanityImage.astro';
-import logo from '../../../../design-assets/logos/sight-on-stress.png';
+import logo from '../../../../design-assets/logos/sos.png';
 import LinkedIn from '../assets/link-icons/linkedin.svg';
 import Amazon from '../assets/link-icons/amazon.svg';
 import Instagram from '../assets/link-icons/instagram.svg';
@@ -25,9 +25,8 @@ const blogImage = icon === 'blog' ? await getImage({ src: logo, width: 368, form
 ---
 <span class="flex h-10 w-8 items-center justify-center" aria-hidden="true">
   {blogImage ? (
-    /* Crop the original artwork to its SOS column; retain its colors and vertical orientation. */
-    <svg width="15.8" height="40" viewBox="70 0 1580 4000" overflow="hidden" focusable="false">
-      <image href={blogImage.src} width="4600" height="4000" />
+    <svg width="17" height="40" viewBox="0 0 1700 4000" overflow="hidden" focusable="false">
+      <image href={blogImage.src} width="1700" height="4000" />
     </svg>
   ) : icon === 'custom' && customImage?.asset ? (
     <SanityImage image={customImage} alt="" width={96} sizes="28px" class="max-h-9 w-7 object-contain" />
