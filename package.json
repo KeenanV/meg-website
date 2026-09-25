@@ -8,12 +8,25 @@
     "build": "npm run build --prefix apps/web && npm run build --prefix apps/studio",
     "preview": "npm run preview --prefix apps/web",
     "check": "npm run check --prefix apps/web && npm run check --prefix apps/studio",
-    "test": "npm test --prefix apps/web && npm test --prefix apps/studio",
-    "verify": "npm run check && npm test && npm run build && npm run check:build --prefix apps/web"
+    "test": "npm test --prefix apps/web && npm test --prefix apps/studio && npm run test:hosting",
+    "verify": "npm run check && npm test && npm run build && npm run check:build --prefix apps/web",
+    "test:hosting": "node --test tests/hosting.test.mjs",
+    "hosting:preview": "node scripts/preview-hosting.mjs",
+    "hosting:local": "firebase emulators:start --only hosting --project megvandeusen-website"
   },
-  "dependencies": {},
   "engines": {
     "node": ">=24 <25"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "firebase-tools": "15.31.0"
+  },
+  "overrides": {
+    "gaxios@6.7.1": {
+      "uuid": "^11.1.1"
+    },
+    "@google-cloud/pubsub": {
+      "@opentelemetry/core": "^2.8.0"
+    }
+  }
 }

@@ -56,3 +56,12 @@ Completed this review: clean installs and valid dependency trees in both apps; z
 The updated Studio development server started successfully and rendered its origin-registration screen on the temporary test port. Authenticated editing/publishing was not exercised, and no CORS permissions or CMS documents were changed. Restart an already-running Studio process to load the new installed versions.
 
 Clean installs also report unapproved optional install scripts for esbuild/fsevents under the current local npm policy. No global installation policy was changed; verify builds/startup before deciding an install script needs approval.
+
+## Hosting tooling — September 25, 2026
+
+The root package now pins `firebase-tools@15.31.0` for reproducible deployments, separate from both app dependency trees. Its initial audit reported two underlying moderate advisories (five affected dependency nodes). Scoped overrides address them:
+
+- `gaxios@6.7.1` → `uuid@^11.1.1`: preserves CommonJS support and the v4 API used to construct multipart boundaries; fixes [GHSA-w5hq-g745-h8pq](https://github.com/uuidjs/uuid/security/advisories/GHSA-w5hq-g745-h8pq).
+- `@google-cloud/pubsub` → `@opentelemetry/core@^2.8.0`: fixes [GHSA-8988-4f7v-96qf](https://github.com/open-telemetry/opentelemetry-js/security/advisories/GHSA-8988-4f7v-96qf). Pub/Sub's consumer uses `W3CTraceContextPropagator`, which remains available across this major-version override. Node 24 meets its runtime requirement.
+
+The two root tests exercise the actual consumers: Gaxios multipart body generation and Pub/Sub trace injection/extraction. Both pass, as does the full 16-test verification suite and both production builds. The root audit after overrides reports zero known vulnerabilities. These packages run during development/deployment, not in visitors' browsers. Review and remove these overrides once the CLI's upstream dependency ranges include the fixes.
