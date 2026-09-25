@@ -1,6 +1,8 @@
 ---
-interface Props { compact?: boolean; showBrand?: boolean }
-const { compact = false, showBrand = true } = Astro.props;
+import SocialLinks from './SocialLinks.astro';
+import type { ProfileLink } from '../lib/content';
+interface Props { compact?: boolean; showBrand?: boolean; socials?: ProfileLink[] }
+const { compact = false, showBrand = true, socials = [] } = Astro.props;
 const links = [
   { href: '/', label: 'Home' }, { href: '/about', label: 'About' },
   { href: '/books', label: 'Books' }, { href: '/blog', label: 'Blog' }, { href: '/news', label: 'News' },
@@ -11,7 +13,7 @@ const active = (href: string) => currentPath === href || (href !== '/' && curren
 ---
 <aside class:list={[
   'px-4', compact && !showBrand ? 'pb-8' : 'py-8',
-  compact ? 'w-full' : 'fixed inset-y-0 left-0 hidden w-52 flex-col overflow-y-auto border-r border-white/15 bg-zinc-950/35 backdrop-blur-xl md:flex',
+  compact ? 'flex w-full flex-1 flex-col' : 'fixed inset-y-0 left-0 hidden w-52 flex-col overflow-y-auto border-r border-white/15 bg-zinc-950/35 backdrop-blur-xl md:flex',
 ]}>
   {showBrand && <>
     <a href="/" class="text-lg font-semibold tracking-tight">Meg Van Deusen</a>
@@ -28,5 +30,8 @@ const active = (href: string) => currentPath === href || (href !== '/' && curren
       </a>
     ))}
   </nav>
-  {!compact && <p class="mt-auto pt-10 text-xs text-white/70">© {new Date().getFullYear()} Meg Van Deusen</p>}
+  <div class="mt-auto pt-8">
+    <SocialLinks links={socials} class="mb-3" />
+    <p class="text-xs text-white/70">© {new Date().getFullYear()} Meg Van Deusen</p>
+  </div>
 </aside>

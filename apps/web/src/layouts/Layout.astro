@@ -61,7 +61,7 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefin
       </picture>
       <div class="absolute inset-0 bg-slate-900/40"></div>
     </div>
-    {navigation && <><MobileNav /><SideNav /></>}
+    {navigation && <><MobileNav socials={settings?.socials ?? []} /><SideNav socials={settings?.socials ?? []} /></>}
     <main id="main-content" tabindex="-1" class:list={['min-h-screen px-5 py-8 md:px-10 md:py-12', { 'md:ml-52': navigation }]}>
       <div class:list={['mx-auto', widths[contentWidth]]}><slot /></div>
     </main>

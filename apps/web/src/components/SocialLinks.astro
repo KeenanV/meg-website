@@ -1,0 +1,25 @@
+---
+import LinkIcon from './LinkIcon.astro';
+import { safeHref } from '../lib/urls';
+import type { ProfileLink } from '../lib/content';
+
+interface Props { links?: ProfileLink[]; class?: string }
+const { links = [], class: className = '' } = Astro.props;
+const platforms = [
+  { icon: 'linkedin', label: 'LinkedIn' },
+  { icon: 'instagram', label: 'Instagram' },
+  { icon: 'bluesky', label: 'Bluesky' },
+].flatMap(platform => {
+  const href = safeHref(links.find(link => link.icon === platform.icon)?.url);
+  return href && /^https?:\/\//i.test(href) ? [{ ...platform, href }] : [];
+});
+---
+{platforms.length > 0 && <nav aria-label="Social media" class:list={['flex items-center gap-1', className]}>
+  {platforms.map(({ icon, label, href }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`${label} (opens in a new tab)`}
+      title={label} data-liquid="true"
+      class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white/65 transition duration-200 data-[liquid-active=true]:text-white data-[liquid-active=true]:drop-shadow-[0_0_7px_rgba(255,255,255,.3)] focus-visible:text-white">
+      <LinkIcon name={icon} />
+    </a>
+  ))}
+</nav>}

@@ -101,6 +101,7 @@ if (trigger && closeButton && dialog && panel && backdrop) {
   });
   dialog.querySelectorAll<HTMLAnchorElement>('a').forEach(link => link.addEventListener('click', event => {
     if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    if (link.target && link.target !== '_self') { requestClose(); return; }
     event.preventDefault();
     if (closing) return;
     destination = link.href;

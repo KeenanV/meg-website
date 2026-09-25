@@ -1,6 +1,6 @@
 # Meg's website
 
-Astro's static public website lives in `apps/web`; Sanity Studio lives in `apps/studio`. Each app has its own lockfile. GCP is not configured and is not needed for local work.
+Astro's static public website lives in `apps/web`; Sanity Studio lives in `apps/studio`. Each app has its own lockfile. The root lockfile pins Firebase deployment tooling. Google Cloud is not needed for local development.
 
 ## Local setup
 
@@ -9,6 +9,7 @@ Use Node 24 LTS. From the repository root:
 ```sh
 nvm install
 nvm use
+npm ci
 npm ci --prefix apps/web
 npm ci --prefix apps/studio
 ```
@@ -61,14 +62,35 @@ npm run preview -- stop
 
 Stop the preview before starting the development server on the same port. Neither building nor previewing deploys anything.
 
-Audit the two lockfiles with:
+Audit all three lockfiles with:
 
 ```sh
+npm audit
 npm audit --prefix apps/web
 npm audit --prefix apps/studio
 ```
 
 Studio has scoped security overrides documented in [HARDENING.md](HARDENING.md). Recheck them when upgrading Sanity.
+
+The latest dependency review is recorded in [DEPENDENCIES.md](DEPENDENCIES.md).
+
+## Firebase Hosting preview
+
+The deployment project is **Meg Website Production** (`megvandeusen-website`). Always pass that project explicitly; this laptop's gcloud default belongs to a different website.
+
+Firebase is enabled on this project. Authenticate the Firebase CLI with `npx firebase login`, then run:
+
+```sh
+npm run hosting:preview
+```
+
+This rebuilds the website with canonical URLs for `https://megvandeusen.com`, checks generated routes, and uploads it to the `launch-review` preview channel for seven days. It prints the review URL. Preview responses include `X-Robots-Tag: noindex`; the link is public to anyone who has it, not access-controlled. This command never deploys to the live channel or changes DNS. Rerun it after publishing content in Sanity until automatic deployments are connected.
+
+To test Firebase's routing and headers locally after building, run `npm run hosting:local` and open `http://127.0.0.1:5000`. Stop with Control-C. The configuration serves Astro's individual generated pages and custom 404, revalidates HTML, and caches fingerprinted `/_astro/` assets for a year. It does not rewrite missing routes to the homepage.
+
+The root deployment tooling uses two scoped security overrides: `gaxios@6.7.1` uses UUID 11, and `@google-cloud/pubsub` uses OpenTelemetry core 2.8 or newer. `npm run test:hosting` exercises multipart upload generation and Pub/Sub trace propagation across those overrides. These dependencies are development tooling and are not included in the static website.
+
+Studio is hosted at <https://megvandeusen.sanity.studio/> and requires Sanity sign-in. See [DEPLOYMENT.md](DEPLOYMENT.md) for GitHub workflows, cloud permissions, Studio deployment, recovery, and the explicit hold on DNS cutover.
 
 ## Images and content
 
@@ -89,7 +111,8 @@ The viewer keeps at most five recently opened articles as HTML and metadata, rel
 - Local hardening and a consistent liquid-glass design come first.
 - `/contact` has a glass form with Name, Email, and Message fields, linked from navigation, Home, and About. Email delivery is not connected yet: Send is a clickable preview button with no action, a visible availability note explains this, and the form prevents submission. No recipient email address is embedded in the page. Connect a server-side email service, validate submissions, and add abuse protection and delivery feedback before wiring up Send.
 - `/links` is a standalone glass profile page with no sidebar or mobile navigation. In Studio, open **Links Page** to edit the display name, professional title, optional portrait, and link buttons. The name and portrait default to About. Drag links to reorder them; each has editable button text, an optional destination, and an icon picker (including a custom image option). Missing destinations appear as disabled “Coming soon” buttons. Internal destinations use paths such as `/blog`; external destinations use full URLs. Publish edits and rebuild the static site to show them publicly.
-- GCP account, resources, DNS, HTTPS, build triggers, publish webhooks, and a hosted Studio are later work. `cloudbuild.yaml` is an unverified draft, not a ready-to-run deployment.
+- Navigation and About reuse the LinkedIn, Instagram, and Bluesky destinations from **Links Page**, identified by their icon selection. Edit these URLs there once to update every location. Social icons with missing or invalid destinations are omitted; other link types remain exclusive to `/links`.
+- Firebase Hosting preview and hosted Studio are configured. GitHub workflows check pull requests and deploy previews after merges to master once the workflows are merged. Custom-domain DNS/HTTPS, publication webhooks, and contact delivery remain launch work. The old Cloud Build draft has been replaced by the GitHub workflows.
 - A reader database, accounts, comments, and private messaging are a later phase, not launch requirements.
 
 No placeholder production domain is emitted. When a domain is chosen, provide `SITE_URL` to the build process to enable canonical URLs, then finish sitemap, sharing imagery, hosting headers, and redirects as part of launch preparation.

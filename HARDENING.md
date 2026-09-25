@@ -1,5 +1,7 @@
 # Local hardening — September 15, 2026
 
+Historical record of the initial hardening pass. See [DEPENDENCIES.md](DEPENDENCIES.md) for the September 24 dependency versions, compatibility decisions, and current verification procedure.
+
 This pass is confined to the local website and Studio. GCP, contact delivery, the links page, and reader accounts are deferred. No CMS documents were changed.
 
 ## Content safety and correctness

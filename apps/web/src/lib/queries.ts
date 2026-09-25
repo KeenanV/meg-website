@@ -1,6 +1,7 @@
 import groq from 'groq';
 
-export const qSite = groq`*[_id == "siteSettings"][0]{title, description}`;
+export const qSocialLinks = groq`*[_id == "linksPage"][0].links[icon in ["linkedin", "instagram", "bluesky"]]{_key, label, url, icon}`;
+export const qSite = groq`*[_id == "siteSettings"][0]{title, description, "socials": ${qSocialLinks}}`;
 export const qAbout = groq`*[_id == "about"][0]{name, headshot, about, approach, feesInsurance}`;
 export const qLinksPage = groq`{
   "page": *[_id == "linksPage"][0]{name, title, portrait, links[]{_key, label, url, icon, customIcon}},

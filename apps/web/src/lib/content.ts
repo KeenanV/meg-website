@@ -8,7 +8,7 @@ export interface ContentImage {
   hotspot?: { x: number; y: number; width: number; height: number };
 }
 export type RichText = Array<PortableTextBlock | (ContentImage & { _type: 'image' })>;
-export interface SiteSettings { title?: string; description?: string }
+export interface SiteSettings { title?: string; description?: string; socials?: ProfileLink[] }
 export interface About {
   name?: string; headshot?: ContentImage;
   about?: RichText; approach?: RichText; feesInsurance?: RichText;

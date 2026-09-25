@@ -25,3 +25,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Firebase deployment cache and local diagnostics
+.firebase/
+firebase-debug.log*
+ui-debug.log*
+
+# Short-lived GitHub Actions credentials (never include in deployment artifacts)
+gha-creds-*.json
