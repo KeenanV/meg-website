@@ -1,4 +1,4 @@
-name: Deploy website preview
+name: Deploy website
 
 on:
   push:
@@ -30,6 +30,8 @@ jobs:
       PUBLIC_CONTACT_API_URL: https://website-backend-348807509213.us-west1.run.app/contact
       PUBLIC_RECAPTCHA_SITE_KEY: 6LdoLc8tAAAAAKmmIu7i3h3CrQPqIl5R-HAISA0Z
       GOOGLE_CLOUD_QUOTA_PROJECT: megvandeusen-website
+      # Leave unset (preview) until the production launch is approved.
+      HOSTING_RELEASE_CHANNEL: ${{ vars.HOSTING_RELEASE_CHANNEL || 'preview' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -53,5 +55,5 @@ jobs:
           project_id: megvandeusen-website
           workload_identity_provider: projects/348807509213/locations/global/workloadIdentityPools/github/providers/meg-website
           service_account: github-hosting@megvandeusen-website.iam.gserviceaccount.com
-      - name: Deploy checked output to preview only
-        run: node scripts/deploy-preview.mjs
+      - name: Deploy checked output to the configured channel
+        run: node scripts/deploy-hosting.mjs

@@ -9,10 +9,11 @@
     "preview": "npm run preview --prefix apps/web",
     "check": "npm run check --prefix apps/web && npm run check --prefix apps/studio && npm run check --prefix apps/backend",
     "test": "npm test --prefix apps/web && npm test --prefix apps/studio && npm run test:hosting && npm test --prefix apps/backend",
-    "verify": "npm run check && npm test && npm run build && npm run check:build --prefix apps/web",
+    "verify": "npm run check && npm test && npm run build && npm run check:build --prefix apps/web && npm run check:redirects",
     "test:hosting": "node --test tests/hosting.test.mjs",
     "hosting:preview": "node scripts/preview-hosting.mjs",
-    "hosting:local": "firebase emulators:start --only hosting --project megvandeusen-website"
+    "hosting:local": "firebase emulators:start --only hosting --project megvandeusen-website",
+    "check:redirects": "node --test tests/redirects.test.mjs"
   },
   "engines": {
     "node": ">=24 <25"

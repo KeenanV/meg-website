@@ -4,6 +4,9 @@
     "public": "apps/web/dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "trailingSlash": false,
+    "redirects": [
+      { "regex": "^/share-stressed-in-the-us/?$", "destination": "/books", "type": 301 }
+    ],
     "headers": [
       {
         "source": "**",
