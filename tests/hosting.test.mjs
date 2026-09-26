@@ -1,9 +1,24 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { createWebsiteConfig } from '../scripts/hosting-config.mjs';
 
 const require = createRequire(import.meta.url);
 const firebaseRequire = createRequire(require.resolve('firebase-tools/package.json'));
+
+test('release configuration defaults to preview and does not leak noindex into production', () => {
+  const preview = createWebsiteConfig();
+  const live = createWebsiteConfig('live');
+  const robotsHeaders = config => config.hosting.headers.flatMap(rule => rule.headers)
+    .filter(header => header.key.toLowerCase() === 'x-robots-tag');
+  assert.deepEqual(robotsHeaders(preview), [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }]);
+  assert.deepEqual(robotsHeaders(live), []);
+  assert.equal(live.hosting.site, 'megvandeusen-website');
+  assert.equal(live.hosting.public, fileURLToPath(new URL('../apps/web/dist', import.meta.url)));
+  assert.deepEqual(live.hosting.redirects, preview.hosting.redirects);
+  assert.throws(() => createWebsiteConfig('production'), /must be preview or live/);
+});
 
 test('Firebase HTTP client can build multipart uploads with the patched UUID dependency', async () => {
   const { Gaxios } = firebaseRequire('gaxios');
