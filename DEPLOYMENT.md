@@ -47,6 +47,20 @@ npx sanity deploy --schema-required
 
 The CLI config pins the hosted application ID. Automatic Studio package updates are disabled so deployed code matches the repository's tested lockfile. Sanity project membership still controls content access; a hosted Studio does not grant new users editing rights. Give Meg an appropriate editing role through project membership before her handoff.
 
+### Book rich-text rollout
+
+Books use `descriptionRichText` (shown as **Description** in Studio) and optional `endorsements` (shown behind **Read endorsements**). The original plain-text `description` is retained, hidden and read-only in the new Studio, for rollback and older website builds. An empty Year displays **Coming Soon**.
+
+The additive migration has a preview mode and backs up full book documents before applying changes:
+
+```sh
+cd apps/studio
+npx sanity exec scripts/migrate-book-content.mjs --with-user-token
+npx sanity exec scripts/migrate-book-content.mjs --with-user-token -- --apply
+```
+
+It preserves existing rich-text fields, checks document revisions, and leaves original descriptions untouched. Backups go to the ignored `.firebase/content-backups/` directory. The existing Social Anxiety Vortex praise is moved into Endorsements; future books should use that field directly. After merging the website changes, deploy Studio separately using the command above so editors see the new fields. Avoid editing descriptions in the old Studio between migration and the new Studio deployment, because those edits only affect the legacy field.
+
 The old Cloud Storage `cloudbuild.yaml` draft has been replaced by the GitHub workflows.
 
 ## Recovery

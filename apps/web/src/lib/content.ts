@@ -24,7 +24,8 @@ export interface Article {
   excerpt?: string; publishedAt?: string; date?: string; body?: RichText;
 }
 export interface Book {
-  title: string; cover?: ContentImage; year?: number; description?: string;
+  title: string; cover?: ContentImage; year?: number | null; description?: string;
+  descriptionRichText?: RichText; endorsements?: RichText;
   buyLinks?: Array<{ label?: string; url?: string }>;
 }
 export function hasValidSlug<T extends { slug?: unknown }>(entry: T): entry is T & { slug: string } {
