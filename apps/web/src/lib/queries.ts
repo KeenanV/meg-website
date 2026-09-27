@@ -7,7 +7,7 @@ export const qLinksPage = groq`{
   "page": *[_id == "linksPage"][0]{name, title, portrait, links[]{_key, label, url, icon, customIcon}},
   "profile": *[_id == "about"][0]{name, headshot}
 }`;
-export const qBooks = groq`*[_type == "book"] | order(year desc, title asc){title, cover, description, year, buyLinks}`;
+export const qBooks = groq`*[_type == "book"] | order(year desc, title asc){title, cover, description, descriptionRichText, endorsements, year, buyLinks}`;
 export const qPosts = groq`*[_type == "blogPost" && defined(slug.current) && slug.current != ""] | order(publishedAt desc, title asc, _id asc){
   title, "slug": slug.current, cover, publishedAt, excerpt
 }`;
