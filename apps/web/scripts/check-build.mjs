@@ -18,8 +18,14 @@ for (const file of pages) {
   assert.equal((html.match(/<h1[\s>]/g) || []).length, 1, file + ': expected one primary heading');
   assert.match(html, /<meta[^>]*name="description"[^>]*content="[^"]+"/, file + ': missing description');
   assert.doesNotMatch(html, /https:\/\/example\.com/, file + ': placeholder domain');
+  if (process.env.PUBLIC_SITE_ENV === 'staging') {
+    assert.match(html, /<meta[^>]*name="robots"[^>]*content="noindex"/, file + ': staging must not be indexed');
+    assert.match(html, /Private test environment/, file + ': staging banner missing');
+  }
   if (file === 'resources/index.html') {
     assert.match(html, /<meta[^>]*name="robots"[^>]*content="noindex"/, 'Resources must not be indexed');
+    assert.match(html, /data-resources-login/, 'Resources must render a password gate');
+    assert.doesNotMatch(html, /cdn\.sanity\.io\/files|data-audio-url=|data-title=/, 'Protected recording data leaked into static HTML');
     assert.equal((html.match(/<audio\b/g) || []).length, 1, 'Resources must share one audio player');
     assert.doesNotMatch(html, /<audio\b[^>]*\s(?:src|autoplay)=/, 'Audio must not load or play before selection');
   } else {

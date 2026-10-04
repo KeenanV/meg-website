@@ -1,11 +1,23 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createWebsiteConfig } from '../scripts/hosting-config.mjs';
 
 const require = createRequire(import.meta.url);
 const firebaseRequire = createRequire(require.resolve('firebase-tools/package.json'));
+
+test('staging has no public static upload path and routes every URL through its protected service', () => {
+  const {hosting} = JSON.parse(readFileSync(new URL('../firebase.staging.json', import.meta.url), 'utf8'));
+  assert.equal(hosting.site, 'megvandeusen-staging');
+  assert.equal(hosting.public, '.firebase/staging-empty');
+  assert.deepEqual(hosting.ignore, ['**/*']);
+  assert.deepEqual(hosting.rewrites, [{source: '**', run: {serviceId: 'staging-website', region: 'us-west1', pinTag: true}}]);
+  const headers = hosting.headers.find(rule => rule.source === '**').headers;
+  assert(headers.some(header => header.key === 'X-Robots-Tag' && header.value.includes('noindex')));
+  assert(headers.some(header => header.key === 'Cache-Control' && header.value === 'private, no-store'));
+});
 
 test('only Resources is noindex in production; all preview pages are noindex', () => {
   const preview = createWebsiteConfig();

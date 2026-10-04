@@ -121,16 +121,15 @@ No placeholder production domain is emitted. When a domain is chosen, provide `S
 
 [PROJECT_REVIEW.md](PROJECT_REVIEW.md) is the original assessment before hardening; [HARDENING.md](HARDENING.md) describes this pass.
 
-## Guided meditation resources
+## Protected recording resources
 
-`/resources` is an unlisted guided-meditation library for the book's QR code. It has
-a robots `noindex` meta tag and a Firebase `X-Robots-Tag` header, and no navigation
-links point to it. This is not password protection: both the page and uploaded
-audio remain public to anyone with their URLs.
+`/resources` is unlisted and excluded from indexing. It now serves a glass password
+gate and loads recording content only after server authentication. Local audio and
+images live outside public assets; requests require an authenticated session,
+including byte-range seeking. See [RESOURCES_AUTH.md](RESOURCES_AUTH.md) for the
+local demo setup, the protected staging preview, and required production rollout.
 
-In Studio's **Resources** collection, add a title, picture, short excerpt, and MP3,
-then publish. Cards sort alphabetically. Selecting a card flips it in place and
-starts the shared bottom player; selecting it again pauses/resumes, selecting
-another switches tracks, and closing the player stops playback and resets the
-card. Only the selected audio loads. See the Resources rollout in
-[DEPLOYMENT.md](DEPLOYMENT.md) before publishing the first meditation.
+Studio's **Resources** documents still manage title, recording type, picture,
+excerpt and MP3. The current Sanity uploader is public; cloud-private uploads and
+retirement of the existing public copies are a separate migration described in the
+handoff. Do not deploy the gated page to production before its backend is ready.

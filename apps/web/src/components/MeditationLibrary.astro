@@ -1,42 +1,21 @@
----
-import SanityImage from './SanityImage.astro';
-import {urlFor} from '../lib/sanity';
-import {recordingLabel} from '../lib/audio';
-import {safeHref} from '../lib/urls';
-import type {Meditation} from '../lib/content';
-interface Props {meditations: Meditation[]}
-const meditations = Astro.props.meditations.filter(item => {
-  const url = safeHref(item.audioUrl);
-  return item.title?.trim() && url && (url.startsWith('/') || url.startsWith('https://'));
-});
----
 <div class="resources-library" data-meditation-library>
-  <header class="section-intro">
-    <p class="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-emerald-100">A moment for yourself</p>
-    <h1 class="page-heading">Resources</h1>
-    <p class="mt-3 max-w-2xl text-base text-white/80">Guided practices with Meg. Find a comfortable place, take a breath, and choose a practice to begin.</p>
-  </header>
   <section class="mt-6" aria-label="Guided recordings">
     <div class="meditation-grid grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-      {meditations.map((item, index) => (
+      <template data-recording-template>
         <article>
-          <h2 class="sr-only">{item.title}</h2>
+          <h2 class="sr-only"></h2>
           <button type="button" class="meditation-card" data-meditation-card data-liquid="true" disabled
-            data-audio-url={item.audioUrl} data-title={item.title}
-            data-description-id={`meditation-excerpt-${index}`}
-            data-artwork={item.cover ? urlFor(item.cover).width(256).height(256).fit('crop').url() : undefined}
-            aria-label={`Play ${item.title}`} aria-pressed="false">
+            aria-label="Play recording" aria-pressed="false">
             <span class="meditation-glass glass-surface" aria-hidden="true"></span>
             <span class="meditation-rotor">
               <span class="meditation-face meditation-front" aria-hidden="false">
                 <span class="meditation-image">
-                  {item.cover ? <SanityImage image={item.cover} alt="" width={840} height={525}
-                    sizes="(min-width: 1280px) 360px, (min-width: 768px) 45vw, 100vw" priority={index < 3}
-                    class="aspect-[8/5] w-full object-cover" /> : <span class="meditation-placeholder" aria-hidden="true">✦</span>}
+                  <img data-recording-image alt="" width="840" height="525" loading="lazy" decoding="async" class="aspect-[8/5] w-full object-cover" hidden />
+                  <span class="meditation-placeholder" data-recording-placeholder aria-hidden="true">✦</span>
                 </span>
                 <span class="meditation-front-copy">
-                  <span class="text-xs font-medium uppercase tracking-[0.16em] text-emerald-100 break-words">{recordingLabel(item.recordingType, item.customRecordingType)}</span>
-                  <span class="meditation-title">{item.title}</span>
+                  <span data-recording-label class="text-xs font-medium uppercase tracking-[0.16em] text-emerald-100 break-words"></span>
+                  <span class="meditation-title"></span>
                   <span class="mt-auto pt-5 text-sm text-white/70">Take a moment <span aria-hidden="true">→</span></span>
                 </span>
                 <span class="meditation-shimmer" aria-hidden="true"></span>
@@ -46,9 +25,9 @@ const meditations = Astro.props.meditations.filter(item => {
                 </span>
               </span>
               <span class="meditation-face meditation-back" aria-hidden="true">
-                <span class="text-xs font-medium uppercase tracking-[0.16em] text-emerald-100 break-words">{recordingLabel(item.recordingType, item.customRecordingType)}</span>
-                <span class="meditation-title">{item.title}</span>
-                <span class="meditation-excerpt" id={`meditation-excerpt-${index}`}>{item.excerpt}</span>
+                <span data-recording-label class="text-xs font-medium uppercase tracking-[0.16em] text-emerald-100 break-words"></span>
+                <span class="meditation-title"></span>
+                <span class="meditation-excerpt" ></span>
                 <span class="meditation-state" data-card-status>Ready to listen</span>
                 <span class="meditation-shimmer" aria-hidden="true"></span>
                 <span class="card-play" aria-hidden="true">
@@ -59,17 +38,11 @@ const meditations = Astro.props.meditations.filter(item => {
             </span>
           </button>
         </article>
-      ))}
+      </template>
     </div>
-    {!meditations.length && <div class="glass-surface p-8 text-white/80">
+    <div class="glass-surface p-8 text-white/80" data-recordings-empty hidden>
       Guided recordings will be available here soon. Please check back for a quiet moment together.
-    </div>}
-    {meditations.length > 0 && <noscript>
-      <div class="glass-surface mt-6 p-6">
-        <p>Enable JavaScript to use the player, or open a recording directly:</p>
-        <ul class="mt-3 space-y-2">{meditations.map(item => <li><a class="text-emerald-100 underline" href={item.audioUrl}>{item.title}</a></li>)}</ul>
-      </div>
-    </noscript>}
+    </div>
   </section>
   <section class="meditation-player glass-surface" data-meditation-player aria-label="Audio player" hidden>
     <audio preload="none" data-meditation-audio></audio>
@@ -96,9 +69,6 @@ const meditations = Astro.props.meditations.filter(item => {
     <p class="player-status" role="status" aria-live="polite" data-player-status></p>
   </section>
 </div>
-<script>
-  import '../scripts/meditation-player';
-</script>
 <style>
   .resources-library { --player-height: 10rem; }
   .resources-library[data-player-open] { padding-bottom: calc(var(--player-height) + 2rem); }

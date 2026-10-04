@@ -1,13 +1,49 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import MeditationLibrary from '../components/MeditationLibrary.astro';
-import {sanity} from '../lib/sanity';
-import {qMeditations} from '../lib/queries';
-import type {Meditation} from '../lib/content';
-
-const meditations = await sanity.fetch<Meditation[]>(qMeditations);
 ---
 <Layout title="Resources" description="Guided practices with Meg Van Deusen. A little space to pause, reconnect, and find calm."
   contentWidth="6xl" noindex>
-  <MeditationLibrary meditations={meditations} />
+  <div data-resources-access>
+    <header class="section-intro">
+      <p class="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-emerald-100">A moment for yourself</p>
+      <h1 class="page-heading">Resources</h1>
+      <p class="mt-3 max-w-2xl text-base text-white/80">Guided practices with Meg. Find a comfortable place, take a breath, and choose a practice to begin.</p>
+    </header>
+    <div class="resources-gate" data-resources-gate>
+      <section class="unlock-panel glass-surface" aria-labelledby="unlock-heading">
+        <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3"/></svg>
+        <h2 id="unlock-heading">A space just for you</h2>
+        <p class="mt-3 text-white/75">Enter the password from your book to explore Meg’s guided recordings.</p>
+        <form data-resources-login class="mt-6">
+          <label for="resources-password" class="block mb-2 text-sm font-medium">Book password</label>
+          <input id="resources-password" name="password" type="password" autocomplete="current-password" required maxlength="256" aria-describedby="resources-status" />
+          <button type="submit" class="unlock-button" data-liquid="true">Unlock resources <span aria-hidden="true">→</span></button>
+        </form>
+        <p id="resources-status" role="status" aria-live="polite" class="access-status" data-resources-status></p>
+        <noscript><p class="mt-4">Please enable JavaScript to securely unlock and play the recordings.</p></noscript>
+      </section>
+    </div>
+    <div data-resources-content hidden>
+      <div class="mt-5 flex justify-end"><button type="button" class="lock-resources" data-resources-logout>Lock resources</button></div>
+      <div data-resources-mount></div>
+    </div>
+    <!-- An empty visual template, never recording metadata, MP3s, or passwords. -->
+    <template data-resources-library-template><MeditationLibrary /></template>
+  </div>
 </Layout>
+<script>import '../scripts/resources-access';</script>
+<style>
+  .resources-gate { display: grid; place-items: center; min-height: 58vh; padding: 2rem 0; }
+  .unlock-panel { width: min(100%, 30rem); padding: clamp(1.5rem, 4vw, 2.5rem); backdrop-filter: blur(28px) saturate(130%); }
+  .lock-icon { width: 2rem; height: 2rem; margin-bottom: 1.5rem; color: #d1fae5; }
+  h2 { font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 600; letter-spacing: -.035em; }
+  input { width: 100%; border: 1px solid #ffffff38; border-radius: .85rem; background: #ffffff0a; padding: .85rem 1rem; color: white; font-size: 1rem; transition: box-shadow 180ms, border-color 180ms; }
+  input:hover { box-shadow: 0 0 20px #ffffff16; }
+  input:focus { outline: none; border-color: #ffffffa0; box-shadow: 0 0 7px #ffffff60, 0 0 24px #ffffff25; }
+  .unlock-button { position: relative; width: 100%; display: flex; justify-content: space-between; margin-top: 1rem; padding: .9rem 1rem; border: 1px solid #ffffff38; border-radius: .85rem; background: #ffffff12; font-size: 1.05rem; font-weight: 600; transition: box-shadow 180ms, background 180ms; }
+  .unlock-button[data-liquid-active] { background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), #ffffff30, #ffffff0a); box-shadow: 0 0 20px #ffffff12; }
+  .unlock-button:disabled { opacity: .65; cursor: wait; }
+  .access-status { min-height: 2.75rem; margin-top: 1rem; font-size: .875rem; color: #d1fae5; }
+  .lock-resources { border-radius: .75rem; padding: .6rem 1rem; border: 1px solid #ffffff30; background: #0a131b88; font-size: .9rem; }
+</style>

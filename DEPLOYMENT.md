@@ -180,6 +180,11 @@ Replace the placeholder with a verified retained version ID. Reverting source an
 
 ## Resources rollout
 
+**Resources auth rollout:** the current branch replaces the public catalog with a
+password gate. Complete the backend/private-storage migration in
+[RESOURCES_AUTH.md](RESOURCES_AUTH.md) before following the older public-upload
+instructions below or deploying this branch to production.
+
 The `/resources` page adds the `meditation` document type. No sample meditations are
 published as part of development. The page is unlisted and noindex, not access-controlled.
 Use `https://megvandeusen.com/resources` as the stable QR-code destination after release.

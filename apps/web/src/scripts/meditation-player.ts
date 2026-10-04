@@ -1,9 +1,8 @@
 import {clampAudioTime, formatAudioTime} from '../lib/audio';
 
-const library = document.querySelector<HTMLElement>('[data-meditation-library]');
-if (library) setupPlayer(library);
-
-function setupPlayer(root: HTMLElement) {
+export function setupPlayer(root: HTMLElement) {
+  const listeners = new AbortController();
+  const options = {signal: listeners.signal};
   const audio = root.querySelector<HTMLAudioElement>('[data-meditation-audio]')!;
   const player = root.querySelector<HTMLElement>('[data-meditation-player]')!;
   const cards = [...root.querySelectorAll<HTMLButtonElement>('[data-meditation-card]')];
@@ -22,6 +21,9 @@ function setupPlayer(root: HTMLElement) {
   let scrubbing = false;
   let starting = false;
   let animationFrame = 0;
+  let resumeTime: number | undefined;
+  let automaticRetries = 0;
+  let wantsPlayback = false;
 
   function duration() { return Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0; }
   function announce(message: string) { status.textContent = message; }
@@ -75,6 +77,7 @@ function setupPlayer(root: HTMLElement) {
     }
   }
   function pause() {
+    wantsPlayback = false;
     request++;
     starting = false;
     audio.pause();
@@ -86,7 +89,8 @@ function setupPlayer(root: HTMLElement) {
     if (!active) return;
     const current = ++request;
     starting = true;
-    if (audio.error) audio.load();
+    wantsPlayback = true;
+    if (audio.error) renewSource();
     if (audio.ended) audio.currentTime = 0;
     announce(audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA ? 'Loading recording…' : '');
     // Start within the click itself, before any flip animation or awaited work.
@@ -97,6 +101,14 @@ function setupPlayer(root: HTMLElement) {
         ? 'Press play to start listening.' : 'This recording could not play. Please try again.');
       playbackState();
     });
+  }
+  function renewSource() {
+    if (!active) return;
+    resumeTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+    const source = new URL(active.dataset.audioUrl!, window.location.href);
+    source.searchParams.set('renew', String(Date.now()));
+    audio.src = source.href;
+    audio.load();
   }
   function flip(card: HTMLButtonElement, selected: boolean) {
     card.toggleAttribute('data-selected', selected);
@@ -138,6 +150,8 @@ function setupPlayer(root: HTMLElement) {
     audio.pause();
     if (active) flip(active, false);
     active = card;
+    resumeTime = undefined;
+    automaticRetries = 0;
     scrubbing = false;
     flip(card, true);
     title.textContent = card.dataset.title!;
@@ -164,6 +178,7 @@ function setupPlayer(root: HTMLElement) {
     pause();
     if (previous) flip(previous, false);
     active = undefined;
+    resumeTime = undefined;
     audio.removeAttribute('src');
     audio.load();
     player.hidden = true;
@@ -175,49 +190,67 @@ function setupPlayer(root: HTMLElement) {
     }
     if (restoreFocus) previous?.focus({preventScroll: true});
   }
-  cards.forEach(card => { card.disabled = false; card.addEventListener('click', () => select(card)); });
-  toggle.addEventListener('click', () => { if (starting || !audio.paused) pause(); else play(); });
-  close.addEventListener('click', () => stop(true));
+  cards.forEach(card => { card.disabled = false; card.addEventListener('click', () => select(card), options); });
+  toggle.addEventListener('click', () => { if (starting || !audio.paused) pause(); else play(); }, options);
+  close.addEventListener('click', () => stop(true), options);
   document.addEventListener('click', event => {
     if (!active || !(event.target instanceof Node)) return;
     // Player controls remain interactive; clicking another card switches tracks.
     if (player.contains(event.target) || cards.some(card => card.contains(event.target as Node))) return;
     stop(false);
-  });
-  seek.addEventListener('pointerdown', () => { scrubbing = true; });
+  }, options);
+  seek.addEventListener('pointerdown', () => { scrubbing = true; }, options);
   seek.addEventListener('keydown', event => {
     const offsets: Record<string, number> = {ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5};
     if (!(event.key in offsets) && event.key !== 'Home' && event.key !== 'End') return;
     event.preventDefault();
     scrubbing = false;
     seekTo(event.key === 'Home' ? 0 : event.key === 'End' ? duration() : audio.currentTime + offsets[event.key]);
-  });
+  }, options);
   const finishScrub = () => { scrubbing = false; updateTime(); };
-  document.addEventListener('pointerup', finishScrub);
-  document.addEventListener('pointercancel', finishScrub);
-  seek.addEventListener('keyup', finishScrub);
-  seek.addEventListener('blur', finishScrub);
+  document.addEventListener('pointerup', finishScrub, options);
+  document.addEventListener('pointercancel', finishScrub, options);
+  seek.addEventListener('keyup', finishScrub, options);
+  seek.addEventListener('blur', finishScrub, options);
   seek.addEventListener('input', () => {
     const time = clampAudioTime(Number(seek.value), duration());
     seekTo(time);
     elapsed.textContent = formatAudioTime(time);
     seek.style.setProperty('--played', `${duration() ? time / duration() * 100 : 0}%`);
     seek.setAttribute('aria-valuetext', `${formatAudioTime(time)} of ${formatAudioTime(duration())}`);
-  });
-  for (const event of ['loadedmetadata', 'durationchange', 'timeupdate', 'seeked']) audio.addEventListener(event, updateTime);
-  for (const event of ['play', 'pause', 'ended']) audio.addEventListener(event, playbackState);
-  audio.addEventListener('playing', () => { starting = false; announce(''); startProgress(); });
-  for (const event of ['pause', 'ended', 'waiting', 'emptied', 'error']) audio.addEventListener(event, stopProgress);
+  }, options);
+  for (const event of ['loadedmetadata', 'durationchange', 'timeupdate', 'seeked']) audio.addEventListener(event, updateTime, options);
+  for (const event of ['play', 'pause', 'ended']) audio.addEventListener(event, playbackState, options);
+  audio.addEventListener('playing', () => { starting = false; announce(''); startProgress(); }, options);
+  for (const event of ['pause', 'ended', 'waiting', 'emptied', 'error']) audio.addEventListener(event, stopProgress, options);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) stopProgress(); else { updateTime(); startProgress(); }
-  });
-  audio.addEventListener('ended', () => { starting = false; announce('Practice complete. Take a moment before continuing.'); });
-  audio.addEventListener('waiting', () => { if (!audio.paused) announce('Buffering…'); });
-  audio.addEventListener('canplay', () => { if (!audio.paused) announce(''); });
-  audio.addEventListener('error', () => { if (active) { starting = false; announce('This recording could not load. Please try again.'); playbackState(); } });
-  artwork.addEventListener('error', () => { artwork.hidden = true; });
-  new ResizeObserver(() => {
+  }, options);
+  audio.addEventListener('ended', () => { wantsPlayback = false; starting = false; announce('Practice complete. Take a moment before continuing.'); }, options);
+  audio.addEventListener('waiting', () => { if (!audio.paused) announce('Buffering…'); }, options);
+  audio.addEventListener('canplay', () => { if (!audio.paused) announce(''); }, options);
+  audio.addEventListener('loadedmetadata', () => {
+    if (resumeTime === undefined) return;
+    const time = resumeTime; resumeTime = undefined;
+    seekTo(time);
+  }, options);
+  audio.addEventListener('error', () => {
+    if (!active) return;
+    // A signed media link can expire while paused. Reauthorize once and keep
+    // the position; persistent/offline/auth errors must not cause retry loops.
+    if (automaticRetries++ === 0) {
+      const resume = wantsPlayback;
+      renewSource();
+      if (resume) play();
+      return;
+    }
+    starting = false; announce('This recording could not load. Please try again.'); playbackState();
+  }, options);
+  artwork.addEventListener('error', () => { artwork.hidden = true; }, options);
+  const observer = new ResizeObserver(() => {
     if (!player.hidden) root.style.setProperty('--player-height', `${player.getBoundingClientRect().height}px`);
-  }).observe(player);
-  window.addEventListener('pagehide', () => stop(false));
+  });
+  observer.observe(player);
+  window.addEventListener('pagehide', () => stop(false), options);
+  return () => { stop(false); listeners.abort(); observer.disconnect(); };
 }

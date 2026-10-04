@@ -30,6 +30,7 @@ const images = await Promise.all([768, 1280, 1920].map(width =>
   getImage({ src: source, width: Math.min(width, source.width), format: 'webp', quality: 78 })
 ));
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefined;
+const isStaging = import.meta.env.PUBLIC_SITE_ENV === 'staging';
 ---
 <!doctype html>
 <html lang="en" data-scene-aspect={source.width / source.height} style={`--scene-image: url("${images[2].src}")`}>
@@ -41,7 +42,7 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefin
     <title>{pageTitle}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     {canonical && <link rel="canonical" href={canonical} />}
-    {noindex && <meta name="robots" content="noindex" />}
+    {(noindex || isStaging) && <meta name="robots" content="noindex" />}
     <meta property="og:title" content={pageTitle} />
     <meta property="og:site_name" content={siteTitle} />
     <meta property="og:description" content={pageDescription} />
@@ -63,6 +64,7 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefin
     </div>
     {navigation && <><MobileNav socials={settings?.socials ?? []} /><SideNav socials={settings?.socials ?? []} /></>}
     <main id="main-content" tabindex="-1" class:list={['min-h-screen px-5 py-8 md:px-10 md:py-12', { 'md:ml-52': navigation }]}>
+      {isStaging && <p class="mx-auto mb-5 max-w-6xl rounded-xl border border-amber-200/30 bg-slate-950/80 px-4 py-2 text-sm text-amber-100">Staging · Private test environment</p>}
       <div class:list={['mx-auto', widths[contentWidth]]}><slot /></div>
     </main>
     <script>
