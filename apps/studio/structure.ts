@@ -41,5 +41,6 @@ export const structure = (S: StructureBuilder) =>
       S.documentTypeListItem('book').title('Books'),
       S.documentTypeListItem('blogPost').title('Blog Posts'),
       S.documentTypeListItem('newsItem').title('News'),
+      S.documentTypeListItem('meditation').title('Resources'),
 
     ])

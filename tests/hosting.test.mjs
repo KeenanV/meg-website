@@ -7,13 +7,17 @@ import { createWebsiteConfig } from '../scripts/hosting-config.mjs';
 const require = createRequire(import.meta.url);
 const firebaseRequire = createRequire(require.resolve('firebase-tools/package.json'));
 
-test('release configuration defaults to preview and does not leak noindex into production', () => {
+test('only Resources is noindex in production; all preview pages are noindex', () => {
   const preview = createWebsiteConfig();
   const live = createWebsiteConfig('live');
-  const robotsHeaders = config => config.hosting.headers.flatMap(rule => rule.headers)
+  const robotsHeaders = (config, source) => config.hosting.headers.filter(rule => rule.source === source).flatMap(rule => rule.headers)
     .filter(header => header.key.toLowerCase() === 'x-robots-tag');
-  assert.deepEqual(robotsHeaders(preview), [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }]);
-  assert.deepEqual(robotsHeaders(live), []);
+  assert.deepEqual(robotsHeaders(preview, '**'), [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }]);
+  assert.deepEqual(robotsHeaders(live, '**'), []);
+  assert.deepEqual(robotsHeaders(live, '/resources{,/**}'), [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }]);
+  const minimatch = firebaseRequire('minimatch');
+  for (const url of ['/resources', '/resources/', '/resources/index.html']) assert(minimatch(url, '/resources{,/**}'));
+  for (const url of ['/news', '/about', '/resources-extra']) assert(!minimatch(url, '/resources{,/**}'));
   assert.equal(live.hosting.site, 'megvandeusen-website');
   assert.equal(live.hosting.public, fileURLToPath(new URL('../apps/web/dist', import.meta.url)));
   assert.deepEqual(live.hosting.redirects, preview.hosting.redirects);

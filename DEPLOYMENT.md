@@ -102,7 +102,7 @@ It checks/tests the backend and deploys its source with explicit project and ide
 
 ## Sanity publishing
 
-Webhook **Website published-content rebuild** (`WFtSNiArFyLkX4JB`) targets `/sanity-hook`. It covers create/update/delete for the six rendered document types, excludes drafts/releases, and sends only document metadata. Deletion/unpublication uses `before()` metadata. The backend validates the raw-body HMAC signature and expected project/dataset/type before dispatching `deploy.yml` on `master`.
+Webhook **Website published-content rebuild** (`WFtSNiArFyLkX4JB`) targets `/sanity-hook`. After the Resources rollout below, it covers create/update/delete for all seven rendered document types, excludes drafts/releases, and sends only document metadata. Deletion/unpublication uses `before()` metadata. The backend validates the raw-body HMAC signature and expected project/dataset/type before dispatching `deploy.yml` on `master`.
 
 Successful dispatches are deduplicated in a bounded 24-hour process-local cache. GitHub serializes releases and retains the newest pending run during bursts. Failed dispatches return 503 so Sanity can retry; failed builds leave Hosting unchanged. Sanity retries are finite, so inspect delivery attempts and manually run the deployment workflow after an outage or credential expiry. This setup does not yet include a periodic reconciliation job.
 
@@ -113,7 +113,7 @@ cd apps/studio
 npx sanity exec scripts/configure-publishing.mjs --with-user-token -- --url=https://website-backend-348807509213.us-west1.run.app --enable
 ```
 
-Omit `--enable` to disable it. The script creates a missing hook; for an existing hook it only toggles enabled state. Change an existing filter/projection or rotate its signing secret through Sanity's webhook settings and deploy the matching secret version to Cloud Run.
+Omit `--enable` to disable it. The script creates a missing hook; for an existing hook it only toggles enabled state unless `--sync-rule` is supplied, which also updates its filter/projection to match the repository. This preserves the existing signing secret. Rotate the signing secret through Sanity's webhook settings and deploy the matching secret version to Cloud Run.
 
 `npx sanity exec scripts/test-publishing.mjs --with-user-token` creates, updates, and deletes its own temporary `siteSettings` fixture at a noncanonical ID that the website never reads. It verifies the three signed deliveries and excludes a temporary draft. It triggers real preview builds; it does not change Meg's content.
 
@@ -177,3 +177,35 @@ npx firebase hosting:clone 'megvandeusen-website@KNOWN_GOOD_VERSION_ID' 'megvand
 ```
 
 Replace the placeholder with a verified retained version ID. Reverting source and rebuilding is different: it incorporates current Sanity content. A rollback does not revert Sanity documents, backend configuration, or DNS. Address the failing change before resuming deployments, otherwise a subsequent publish can replace the rollback. Keep old web DNS values recorded for a separate DNS rollback; changing them is subject to resolver caches.
+
+## Resources rollout
+
+The `/resources` page adds the `meditation` document type. No sample meditations are
+published as part of development. The page is unlisted and noindex, not access-controlled.
+Use `https://megvandeusen.com/resources` as the stable QR-code destination after release.
+Do not block `/resources` in robots.txt: crawlers need to read its noindex directive.
+Keep this route out of any future sitemap and site-search index.
+
+After merging the feature and verifying the website deployment:
+
+1. Run `node scripts/deploy-backend.mjs` from the repository root so the webhook
+   receiver accepts published `meditation` events. The website workflow tests this
+   backend but does not deploy it.
+2. Update the existing webhook's rule, preserving its destination and signing secret:
+
+   ```sh
+   cd apps/studio
+   npx sanity exec scripts/configure-publishing.mjs --with-user-token -- --url=https://website-backend-348807509213.us-west1.run.app --enable --sync-rule
+   ```
+
+3. Deploy Studio from `apps/studio` with `npx sanity deploy --schema-required`.
+4. In **Resources**, publish a real meditation with a title, picture, excerpt, and
+   MP3. Verify that the signed publishing webhook starts a successful website build,
+   then test playback and seeking at `/resources` on desktop and a phone.
+
+The source query includes only published documents with an uploaded MP3 asset.
+Pictures use the existing image CDN; MP3s stream from Sanity's file CDN when selected,
+and are not copied into the static build. Uploads and listening consume Sanity asset
+storage/bandwidth. Replacing an MP3 or publishing/unpublishing a meditation requires
+the normal site rebuild. The Studio upload filter accepts MP3; other file types are
+excluded from the website even if inserted through the API.

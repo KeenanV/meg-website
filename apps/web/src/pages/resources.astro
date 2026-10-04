@@ -1,0 +1,13 @@
+---
+import Layout from '../layouts/Layout.astro';
+import MeditationLibrary from '../components/MeditationLibrary.astro';
+import {sanity} from '../lib/sanity';
+import {qMeditations} from '../lib/queries';
+import type {Meditation} from '../lib/content';
+
+const meditations = await sanity.fetch<Meditation[]>(qMeditations);
+---
+<Layout title="Resources" description="Guided meditations with Meg Van Deusen. A little space to pause, reconnect, and find calm."
+  contentWidth="6xl" noindex>
+  <MeditationLibrary meditations={meditations} />
+</Layout>

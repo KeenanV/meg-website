@@ -121,6 +121,14 @@ test('signed create, update and delete trigger builds; duplicate body is dedupli
   assert.equal(dispatches.length, 3);
 });
 
+test('published meditations trigger rebuilds, while drafts and asset events do not', async t => {
+  const {hook, dispatches} = await setup(t);
+  assert.equal((await hook(event({type: 'meditation', id: 'meditation-1'}))).status, 202);
+  assert.equal((await hook(event({type: 'meditation', id: 'drafts.meditation-1'}))).status, 400);
+  assert.equal((await hook(event({type: 'sanity.fileAsset', id: 'file-1'}))).status, 400);
+  assert.equal(dispatches.length, 1);
+});
+
 test('untrusted signature, changed payload, wrong project, and unpublished events are rejected', async t => {
   const { hook, dispatches } = await setup(t);
   assert.equal((await hook(event(), 'invalid')).status, 401);

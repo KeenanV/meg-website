@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { isValidSignature, SIGNATURE_HEADER_NAME } from '@sanity/webhook';
 
 const hash = value => createHash('sha256').update(value).digest('hex');
-const contentTypes = new Set(['siteSettings', 'about', 'linksPage', 'book', 'blogPost', 'newsItem']);
+const contentTypes = new Set(['siteSettings', 'about', 'linksPage', 'book', 'blogPost', 'newsItem', 'meditation']);
 const MAX_BODY = 32_768;
 
 // This bounded, process-local limit is a second layer behind reCAPTCHA, not a billing cap.

@@ -120,3 +120,17 @@ The viewer keeps at most five recently opened articles as HTML and metadata, rel
 No placeholder production domain is emitted. When a domain is chosen, provide `SITE_URL` to the build process to enable canonical URLs, then finish sitemap, sharing imagery, hosting headers, and redirects as part of launch preparation.
 
 [PROJECT_REVIEW.md](PROJECT_REVIEW.md) is the original assessment before hardening; [HARDENING.md](HARDENING.md) describes this pass.
+
+## Guided meditation resources
+
+`/resources` is an unlisted guided-meditation library for the book's QR code. It has
+a robots `noindex` meta tag and a Firebase `X-Robots-Tag` header, and no navigation
+links point to it. This is not password protection: both the page and uploaded
+audio remain public to anyone with their URLs.
+
+In Studio's **Resources** collection, add a title, picture, short excerpt, and MP3,
+then publish. Cards sort alphabetically. Selecting a card flips it in place and
+starts the shared bottom player; selecting it again pauses/resumes, selecting
+another switches tracks, and closing the player stops playback and resets the
+card. Only the selected audio loads. See the Resources rollout in
+[DEPLOYMENT.md](DEPLOYMENT.md) before publishing the first meditation.

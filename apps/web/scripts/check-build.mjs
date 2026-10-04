@@ -7,6 +7,7 @@ const files = fs.readdirSync(root, { recursive: true });
 const pages = files.filter(file => file.endsWith('.html'));
 assert(pages.includes('404.html'), 'Missing custom 404');
 assert(pages.includes('links/index.html'), 'Missing standalone links page');
+assert(pages.includes('resources/index.html'), 'Missing unlisted Resources page');
 assert(!files.some(file => file === 'debug' || file.startsWith('debug/')), 'Debug route shipped');
 let localTargets = 0;
 const articleLinks = html => [...html.matchAll(/<a\b(?=[^>]*\bdata-article-link)[^>]*href="([^"]+)"[^>]*>/g)].map(match => match[1]);
@@ -17,6 +18,13 @@ for (const file of pages) {
   assert.equal((html.match(/<h1[\s>]/g) || []).length, 1, file + ': expected one primary heading');
   assert.match(html, /<meta[^>]*name="description"[^>]*content="[^"]+"/, file + ': missing description');
   assert.doesNotMatch(html, /https:\/\/example\.com/, file + ': placeholder domain');
+  if (file === 'resources/index.html') {
+    assert.match(html, /<meta[^>]*name="robots"[^>]*content="noindex"/, 'Resources must not be indexed');
+    assert.equal((html.match(/<audio\b/g) || []).length, 1, 'Resources must share one audio player');
+    assert.doesNotMatch(html, /<audio\b[^>]*\s(?:src|autoplay)=/, 'Audio must not load or play before selection');
+  } else {
+    assert.doesNotMatch(html, /<a\b[^>]*href="\/resources(?:[\/#?"])/, file + ': unlisted Resources link exposed');
+  }
   if (file === 'links/index.html') {
     assert.doesNotMatch(html, /<aside\b|id="open-menu"|id="mobile-menu"/, 'Links page must not render site navigation');
     assert.doesNotMatch(html, /md:ml-52/, 'Links page must not reserve sidebar space');

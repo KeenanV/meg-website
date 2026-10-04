@@ -1,4 +1,4 @@
-// Run with `sanity exec scripts/configure-publishing.mjs --with-user-token -- --url=<backend URL> [--enable]`.
+// Run with `sanity exec scripts/configure-publishing.mjs --with-user-token -- --url=<backend URL> [--enable] [--sync-rule]`.
 // The signing secret is read directly into memory from Secret Manager; never printed or written locally.
 import { getCliClient } from 'sanity/cli';
 import { spawnSync } from 'node:child_process';
@@ -20,7 +20,7 @@ const definition = {
   isDisabledByUser: !process.argv.includes('--enable'), secret: stored.stdout.trim(),
   rule: {
     on: ['create', 'update', 'delete'],
-    filter: 'coalesce(after()._type, before()._type) in ["siteSettings", "about", "linksPage", "book", "blogPost", "newsItem"] && !(coalesce(after()._id, before()._id) in path("drafts.**")) && !(coalesce(after()._id, before()._id) in path("versions.**"))',
+    filter: 'coalesce(after()._type, before()._type) in ["siteSettings", "about", "linksPage", "book", "blogPost", "newsItem", "meditation"] && !(coalesce(after()._id, before()._id) in path("drafts.**")) && !(coalesce(after()._id, before()._id) in path("versions.**"))',
     projection: '{"projectId": sanity::projectId(), "dataset": sanity::dataset(), "id": coalesce(after()._id, before()._id), "type": coalesce(after()._type, before()._type), "operation": delta::operation(), "revision": coalesce(after()._rev, before()._rev)}',
   },
 };
@@ -30,7 +30,10 @@ try {
   const saved = await client.request({
     url: `/hooks/projects/${project}${existing ? `/${existing.id}` : ''}`,
     method: existing ? 'PATCH' : 'POST',
-    body: existing ? { isDisabledByUser: definition.isDisabledByUser } : definition,
+    body: existing ? {
+      isDisabledByUser: definition.isDisabledByUser,
+      ...(process.argv.includes('--sync-rule') ? {rule: definition.rule} : {}),
+    } : definition,
   });
   console.log(JSON.stringify({ id: saved.id, name, enabled: !definition.isDisabledByUser, url: definition.url }));
 } catch {
