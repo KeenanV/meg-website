@@ -21,6 +21,7 @@ function setupPlayer(root: HTMLElement) {
   let request = 0;
   let scrubbing = false;
   let starting = false;
+  let animationFrame = 0;
 
   function duration() { return Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0; }
   function announce(message: string) { status.textContent = message; }
@@ -30,10 +31,36 @@ function setupPlayer(root: HTMLElement) {
     pauseIcon.toggleAttribute('hidden', !playing);
     toggle.setAttribute('aria-label', `${playing ? 'Pause' : 'Play'} ${active?.dataset.title || 'meditation'}`);
     if (active) {
+      active.querySelectorAll('[data-card-play-icon]').forEach(icon => icon.toggleAttribute('hidden', playing));
+      active.querySelectorAll('[data-card-pause-icon]').forEach(icon => icon.toggleAttribute('hidden', !playing));
       active.setAttribute('aria-label', `${playing ? 'Pause' : 'Play'} ${active.dataset.title}`);
       active.querySelector<HTMLElement>('[data-card-status]')!.textContent = audio.ended ? 'Practice complete · Play again' : playing ? 'Now playing · Tap to pause' : 'Paused · Tap to play';
     }
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = active ? playing ? 'playing' : 'paused' : 'none';
+  }
+  function drawProgress() {
+    if (scrubbing) return;
+    const length = duration();
+    const time = clampAudioTime(audio.currentTime, length);
+    seek.value = String(time);
+    seek.style.setProperty('--played', `${length ? time / length * 100 : 0}%`);
+    const label = formatAudioTime(time);
+    if (elapsed.textContent !== label) elapsed.textContent = label;
+    const description = `${label} of ${formatAudioTime(length)}`;
+    if (seek.getAttribute('aria-valuetext') !== description) seek.setAttribute('aria-valuetext', description);
+  }
+  function stopProgress() {
+    cancelAnimationFrame(animationFrame);
+    animationFrame = 0;
+  }
+  function startProgress() {
+    stopProgress();
+    if (audio.paused || audio.ended || document.hidden) return;
+    const frame = () => {
+      drawProgress();
+      animationFrame = requestAnimationFrame(frame);
+    };
+    animationFrame = requestAnimationFrame(frame);
   }
   function updateTime() {
     const length = duration();
@@ -41,12 +68,7 @@ function setupPlayer(root: HTMLElement) {
     seek.disabled = !length;
     seek.max = String(length);
     durationLabel.textContent = formatAudioTime(length);
-    if (!scrubbing) {
-      seek.value = String(time);
-      elapsed.textContent = formatAudioTime(time);
-      seek.style.setProperty('--played', `${length ? time / length * 100 : 0}%`);
-      seek.setAttribute('aria-valuetext', `${formatAudioTime(time)} of ${formatAudioTime(length)}`);
-    }
+    drawProgress();
     if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession && length) {
       try { navigator.mediaSession.setPositionState({duration: length, position: time, playbackRate: audio.playbackRate}); }
       catch { /* Older browser implementations may expose but not support this API. */ }
@@ -56,6 +78,7 @@ function setupPlayer(root: HTMLElement) {
     request++;
     starting = false;
     audio.pause();
+    stopProgress();
     announce('');
     playbackState();
   }
@@ -65,7 +88,7 @@ function setupPlayer(root: HTMLElement) {
     starting = true;
     if (audio.error) audio.load();
     if (audio.ended) audio.currentTime = 0;
-    announce('Loading meditation…');
+    announce(audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA ? 'Loading meditation…' : '');
     // Start within the click itself, before any flip animation or awaited work.
     void audio.play().catch(error => {
       if (current !== request) return;
@@ -82,7 +105,11 @@ function setupPlayer(root: HTMLElement) {
     else card.removeAttribute('aria-describedby');
     card.querySelector('.meditation-front')!.setAttribute('aria-hidden', String(selected));
     card.querySelector('.meditation-back')!.setAttribute('aria-hidden', String(!selected));
-    if (!selected) card.setAttribute('aria-label', `Play ${card.dataset.title}`);
+    if (!selected) {
+      card.setAttribute('aria-label', `Play ${card.dataset.title}`);
+      card.querySelectorAll('[data-card-play-icon]').forEach(icon => icon.removeAttribute('hidden'));
+      card.querySelectorAll('[data-card-pause-icon]').forEach(icon => icon.setAttribute('hidden', ''));
+    }
   }
   function seekTo(time: number) {
     if (!duration()) return;
@@ -151,8 +178,20 @@ function setupPlayer(root: HTMLElement) {
   cards.forEach(card => { card.disabled = false; card.addEventListener('click', () => select(card)); });
   toggle.addEventListener('click', () => { if (starting || !audio.paused) pause(); else play(); });
   close.addEventListener('click', () => stop(true));
+  document.addEventListener('click', event => {
+    if (!active || !(event.target instanceof Node)) return;
+    // Player controls remain interactive; clicking another card switches tracks.
+    if (player.contains(event.target) || cards.some(card => card.contains(event.target as Node))) return;
+    stop(false);
+  });
   seek.addEventListener('pointerdown', () => { scrubbing = true; });
-  seek.addEventListener('keydown', () => { scrubbing = true; });
+  seek.addEventListener('keydown', event => {
+    const offsets: Record<string, number> = {ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5};
+    if (!(event.key in offsets) && event.key !== 'Home' && event.key !== 'End') return;
+    event.preventDefault();
+    scrubbing = false;
+    seekTo(event.key === 'Home' ? 0 : event.key === 'End' ? duration() : audio.currentTime + offsets[event.key]);
+  });
   const finishScrub = () => { scrubbing = false; updateTime(); };
   document.addEventListener('pointerup', finishScrub);
   document.addEventListener('pointercancel', finishScrub);
@@ -167,7 +206,11 @@ function setupPlayer(root: HTMLElement) {
   });
   for (const event of ['loadedmetadata', 'durationchange', 'timeupdate', 'seeked']) audio.addEventListener(event, updateTime);
   for (const event of ['play', 'pause', 'ended']) audio.addEventListener(event, playbackState);
-  audio.addEventListener('playing', () => { starting = false; announce(''); });
+  audio.addEventListener('playing', () => { starting = false; announce(''); startProgress(); });
+  for (const event of ['pause', 'ended', 'waiting', 'emptied', 'error']) audio.addEventListener(event, stopProgress);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopProgress(); else { updateTime(); startProgress(); }
+  });
   audio.addEventListener('ended', () => { starting = false; announce('Practice complete. Take a moment before continuing.'); });
   audio.addEventListener('waiting', () => { if (!audio.paused) announce('Buffering…'); });
   audio.addEventListener('canplay', () => { if (!audio.paused) announce(''); });

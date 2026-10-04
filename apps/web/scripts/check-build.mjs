@@ -23,7 +23,7 @@ for (const file of pages) {
     assert.equal((html.match(/<audio\b/g) || []).length, 1, 'Resources must share one audio player');
     assert.doesNotMatch(html, /<audio\b[^>]*\s(?:src|autoplay)=/, 'Audio must not load or play before selection');
   } else {
-    assert.doesNotMatch(html, /<a\b[^>]*href="\/resources(?:[\/#?"])/, file + ': unlisted Resources link exposed');
+    assert.doesNotMatch(html, /<a\b[^>]*href="\/resources[\/#?"]/, file + ': unlisted Resources link exposed');
   }
   if (file === 'links/index.html') {
     assert.doesNotMatch(html, /<aside\b|id="open-menu"|id="mobile-menu"/, 'Links page must not render site navigation');
