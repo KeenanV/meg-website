@@ -29,7 +29,7 @@ function setupPlayer(root: HTMLElement) {
     const playing = !audio.paused && !audio.ended;
     playIcon.toggleAttribute('hidden', playing);
     pauseIcon.toggleAttribute('hidden', !playing);
-    toggle.setAttribute('aria-label', `${playing ? 'Pause' : 'Play'} ${active?.dataset.title || 'meditation'}`);
+    toggle.setAttribute('aria-label', `${playing ? 'Pause' : 'Play'} ${active?.dataset.title || 'recording'}`);
     if (active) {
       active.querySelectorAll('[data-card-play-icon]').forEach(icon => icon.toggleAttribute('hidden', playing));
       active.querySelectorAll('[data-card-pause-icon]').forEach(icon => icon.toggleAttribute('hidden', !playing));
@@ -88,13 +88,13 @@ function setupPlayer(root: HTMLElement) {
     starting = true;
     if (audio.error) audio.load();
     if (audio.ended) audio.currentTime = 0;
-    announce(audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA ? 'Loading meditation…' : '');
+    announce(audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA ? 'Loading recording…' : '');
     // Start within the click itself, before any flip animation or awaited work.
     void audio.play().catch(error => {
       if (current !== request) return;
       starting = false;
       announce(error instanceof DOMException && error.name === 'NotAllowedError'
-        ? 'Press play to start listening.' : 'This meditation could not play. Please try again.');
+        ? 'Press play to start listening.' : 'This recording could not play. Please try again.');
       playbackState();
     });
   }
@@ -151,7 +151,7 @@ function setupPlayer(root: HTMLElement) {
     updateTime();
     if ('mediaSession' in navigator && 'MediaMetadata' in window) {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: card.dataset.title, artist: 'Meg Van Deusen', album: 'Guided meditations',
+        title: card.dataset.title, artist: 'Meg Van Deusen', album: 'Guided practices',
         artwork: card.dataset.artwork ? [{src: card.dataset.artwork}] : [],
       });
     }
@@ -214,7 +214,7 @@ function setupPlayer(root: HTMLElement) {
   audio.addEventListener('ended', () => { starting = false; announce('Practice complete. Take a moment before continuing.'); });
   audio.addEventListener('waiting', () => { if (!audio.paused) announce('Buffering…'); });
   audio.addEventListener('canplay', () => { if (!audio.paused) announce(''); });
-  audio.addEventListener('error', () => { if (active) { starting = false; announce('This meditation could not load. Please try again.'); playbackState(); } });
+  audio.addEventListener('error', () => { if (active) { starting = false; announce('This recording could not load. Please try again.'); playbackState(); } });
   artwork.addEventListener('error', () => { artwork.hidden = true; });
   new ResizeObserver(() => {
     if (!player.hidden) root.style.setProperty('--player-height', `${player.getBoundingClientRect().height}px`);

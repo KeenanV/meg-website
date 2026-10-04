@@ -30,6 +30,7 @@ export interface Book {
 }
 export interface Meditation {
   _id: string; title: string; cover?: ContentImage; excerpt: string; audioUrl: string;
+  recordingType?: 'meditation' | 'breathing' | 'other'; customRecordingType?: string;
 }
 export function hasValidSlug<T extends { slug?: unknown }>(entry: T): entry is T & { slug: string } {
   return typeof entry.slug === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.slug);

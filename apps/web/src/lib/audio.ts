@@ -11,3 +11,10 @@ export function clampAudioTime(seconds: number, duration: number): number {
   if (!Number.isFinite(seconds) || !Number.isFinite(duration) || duration <= 0) return 0;
   return Math.min(duration, Math.max(0, seconds));
 }
+
+/** Keep previously published recordings readable until an editor chooses a type. */
+export function recordingLabel(type?: string, customLabel?: string): string {
+  if (type === 'breathing') return 'GUIDED BREATHING';
+  if (type === 'other') return customLabel?.trim().toUpperCase() || 'GUIDED PRACTICE';
+  return 'GUIDED MEDITATION';
+}

@@ -15,7 +15,7 @@ export const qNews = groq`*[_type == "newsItem" && defined(slug.current) && slug
   title, "slug": slug.current, cover, date
 }`;
 export const qMeditations = groq`*[_type == "meditation" && defined(audio.asset) && lower(audio.asset->extension) == "mp3"] | order(title asc, _id asc){
-  _id, title, cover, excerpt, "audioUrl": audio.asset->url
+  _id, title, cover, excerpt, recordingType, customRecordingType, "audioUrl": audio.asset->url
 }`;
 export const qPostPages = groq`*[_type == "blogPost" && defined(slug.current) && slug.current != ""] | order(publishedAt desc, title asc, _id asc){
   title, "slug": slug.current, cover, publishedAt, body, excerpt
