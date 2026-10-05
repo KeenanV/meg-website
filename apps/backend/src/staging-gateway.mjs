@@ -11,7 +11,7 @@ const types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 
 // Staging-only outer gate: require the separate randomly generated reviewer
 // credential on every request, including assets, APIs, and direct run.app URLs.
-export function stagingGateway({directory, basicHash, resources, studio}) {
+export function stagingGateway({directory, basicHash, resources, studio, publishing}) {
   const root = path.resolve(directory);
   const failedReviewerAttempts = localBurst(60, 60_000);
   return async (req, res) => {
@@ -28,6 +28,9 @@ export function stagingGateway({directory, basicHash, resources, studio}) {
       // Preflight exposes no content; all operations enforce editor membership.
       const uploadRoute = new URL(req.url, 'http://localhost').pathname;
       if (studio && ['/api/studio/uploads/start', '/api/studio/uploads/finish'].includes(uploadRoute)) return await studio(req, res);
+      // Sanity cannot use the reviewer login. This route verifies its own HMAC
+      // signature and the exact dataset before it can dispatch a build.
+      if (publishing && uploadRoute === '/sanity-hook') return await publishing(req, res);
       const authorization = req.headers.authorization || '';
       const basic = /^Basic ([A-Za-z0-9+/]+={0,2})$/i.exec(authorization);
       const value = basic && authorization.length <= 1024 ? Buffer.from(basic[1], 'base64') : Buffer.alloc(0);
@@ -41,6 +44,7 @@ export function stagingGateway({directory, basicHash, resources, studio}) {
         return reply(401, 'Private staging environment. Reviewer credentials required.');
       }
       const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+      if (publishing && pathname === '/contact' && ['POST', 'OPTIONS'].includes(req.method)) return await publishing(req, res);
       if (pathname.startsWith('/api/resources/')) return await resources(req, res);
       if (!['GET', 'HEAD'].includes(req.method)) return reply(405, 'Method not allowed.');
       // Deny dotfiles and malformed paths before filesystem resolution.
@@ -60,6 +64,7 @@ export function stagingGateway({directory, basicHash, resources, studio}) {
         info = await stat(filename); status = 404;
       }
       res.setHeader('Content-Type', types[path.extname(filename)] || 'application/octet-stream');
+      if (!info) return reply(404, 'Not found.');
       res.setHeader('Content-Length', info.size);
       res.writeHead(status);
       if (req.method === 'HEAD') return res.end();

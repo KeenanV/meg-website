@@ -7,7 +7,7 @@ export default defineCliConfig({
   },
   studioHost: process.env.SANITY_STUDIO_DATASET === 'staging' ? 'megvandeusen-staging' : 'megvandeusen',
   deployment: {
-    ...(process.env.SANITY_STUDIO_DATASET === 'staging' ? {} : {appId: 'a2dfrbw6ybtagqytmnfeu7ew'}),
+    appId: process.env.SANITY_STUDIO_DATASET === 'staging' ? 'j8x5jltsl93mqznk8fhs8pc1' : 'a2dfrbw6ybtagqytmnfeu7ew',
     // Keep hosted Studio on the versions tested and locked in this repository.
     autoUpdates: false,
   },

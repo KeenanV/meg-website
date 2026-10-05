@@ -22,7 +22,8 @@ availability of the form during abuse for protecting the recipient's inbox.
 
 The production backend now requires its project's Firestore database and
 `roles/datastore.user` for its existing runtime service account before deploying
-this version. Hosting's GitHub workflow does not deploy the backend.
+this version. The new environment workflows deploy the backend before releasing
+Hosting and use their own runtime/deployment identities.
 
 The durable contact limits were deployed to production on October 4, 2026
 (`website-backend-00006-9z2`). Live checks confirmed health, input/origin/size
@@ -33,8 +34,18 @@ The owner also tested the published contact form and confirmed its success respo
 Resources login rejects excess work before hashing, with a thirty-request local
 burst limit per minute and four concurrent scrypt operations. Shared Firestore
 budgets cap password calculations at thirty per minute / three hundred per hour.
-Each client key gets ten attempts per fifteen minutes. Staging still deliberately
-uses one reviewer-group key until trusted edge identity is available.
+Each signed browser identifier gets ten attempts per fifteen minutes. Cloud
+login requires reCAPTCHA with a valid token, the exact action and an allowed
+hostname, and a score of at least 0.5. The global allowance is reserved before
+assessment or hashing, so rejected bot assessments also count toward it.
+
+A fifteen-minute HMAC-signed pre-login cookie supplies the browser identifier;
+it cannot authorize catalog or media access. Login replaces it with the opaque
+reader session. Resetting cookies evades the browser limit, but not the global
+allowance or CAPTCHA. We do not trust arbitrary forwarding headers. This is
+application throttling, not per-IP edge protection, and shared allowance
+exhaustion can deny legitimate sign-ins. The owner accepted this tradeoff while
+Cloud Armor is on hold.
 
 The outer staging gate also limits invalid reviewer requests locally to sixty
 per minute. Valid reviewer credentials remain usable during that cooldown.
@@ -46,11 +57,12 @@ it never trusts arbitrary `X-Forwarded-For`. It is **not enabled** on the curren
 Firebase proxy. The future load balancer must overwrite both headers, restrict
 origin ingress, and verify bypass attempts before this policy is activated.
 
-## Private Studio uploads (staging)
+## Private Studio uploads
 
 Start Studio with `SANITY_STUDIO_DATASET=staging npm run dev --prefix apps/studio
 -- --port 3334`. The dataset and title visibly identify staging. The existing
-production Studio retains its current upload control until production migration.
+production Studio is updated by the Production workflow after the private
+backend is deployed. Each Studio dataset maps to its own fixed API and bucket.
 
 The new private upload control sends the editor's existing Sanity session token
 only to our upload API. The backend checks the human identity with Sanity and
@@ -71,7 +83,7 @@ copy. The runtime can create/read objects but cannot overwrite/delete recordings
 
 Only the object reference, generation and size are saved in Sanity. This metadata
 is public; the referenced bytes are protected by GCS. Covers remain public Sanity
-images. Published staging recordings appear in the protected catalog within
+images. Published private recordings appear in the protected catalog within
 thirty seconds, without a website rebuild. Drafts do not appear. Studio's normal
 Publish action controls availability. Already-issued signed media URLs retain
 their earlier expiration if a recording is subsequently unpublished.
@@ -127,3 +139,25 @@ References, checked October 4, 2026:
 - https://cloud.google.com/armor/pricing
 - https://docs.cloud.google.com/armor/docs/integrating-cloud-armor
 - https://www.sanity.io/docs/apis-and-sdks/asset-cdn
+
+## Cloud Armor estimate clarified October 5, 2026
+
+USD, using 730 hours/month, separate global external Application Load Balancers
+in staging and production, one Standard security policy per environment:
+
+| Component | Per environment | Both environments |
+| --- | ---: | ---: |
+| First group of forwarding rules, $0.025/hour | $18.25 | $36.50 |
+| Standard security policy, $0.006849315/hour | $5.00 | $10.00 |
+| Example allowance of 5–10 rules at about $1/rule/month | $5–$10 | $10–$20 |
+| Fixed subtotal | $28.25–$33.25 | $56.50–$66.50 |
+
+The earlier $60–$70 estimate was a rounded planning allowance with several rules,
+not a fixed minimum or an exact quoted bill. Rule count has not been designed or
+provisioned. A minimal one-rule policy per environment would total about $48.50
+for both environments before usage; production alone would roughly halve the
+corresponding subtotal. Request inspection adds $0.75 per million for globally
+scoped Standard policies; load-balancer processing and applicable transfer,
+reCAPTCHA and existing service usage are additional. No Enterprise subscription
+is included. The forwarding-rule base is charged separately per project, not
+once across the billing account. Both pricing sources above support this math.

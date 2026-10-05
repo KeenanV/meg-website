@@ -2,7 +2,6 @@ import {defineField, defineType} from 'sanity';
 import {imageAlt} from '../fields';
 import {PrivateRecordingInput} from '../../components/PrivateRecordingInput';
 
-const privateUploads = process.env.SANITY_STUDIO_DATASET === 'staging';
 
 export default defineType({
   name: 'meditation', title: 'Recording', type: 'document',
@@ -29,19 +28,18 @@ export default defineType({
       description: 'A short description shown when the recording card flips over (up to 500 characters).',
       validation: rule => rule.required().max(500)}),
     defineField({name: 'privateAudio', title: 'Private MP3', type: 'object',
-      hidden: !privateUploads,
       components: {input: PrivateRecordingInput},
       fields: [
         {name: 'objectKey', type: 'string', title: 'Storage reference', readOnly: true},
         {name: 'generation', type: 'string', title: 'Storage version', readOnly: true},
         {name: 'size', type: 'number', title: 'Bytes', readOnly: true},
       ],
-      validation: rule => rule.custom(value => !privateUploads || (value?.objectKey && value.generation)
+      validation: rule => rule.custom(value => (value?.objectKey && value.generation)
         ? true : 'Upload a private MP3 before publishing.')}),
     defineField({name: 'audio', title: 'MP3 file', type: 'file', options: {accept: 'audio/mpeg,.mp3'},
-      hidden: privateUploads, readOnly: privateUploads,
-      description: 'Upload an MP3. The Resources page is unlisted, but its audio files are publicly accessible.',
-      validation: rule => (privateUploads ? rule : rule.required().assetRequired()).custom(value =>
+      hidden: true, readOnly: true,
+      description: 'Legacy public file reference retained only until verified private migration.',
+      validation: rule => rule.custom(value =>
         !value?.asset?._ref || /-mp3$/i.test(value.asset._ref) ? true : 'Choose an MP3 audio file.')}),
   ],
   orderings: [{title: 'Title', name: 'titleAsc', by: [{field: 'title', direction: 'asc'}]}],

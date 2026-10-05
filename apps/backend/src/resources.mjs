@@ -15,11 +15,13 @@ export async function passwordRecord(password) {
 }
 
 export function createResourcesHandler({credentials, store, allowOrigin, secureCookies = true, now = Date.now,
-  state = memoryResourcesState(now), attemptKey = req => req.socket.remoteAddress || 'unknown'}) {
+  state = memoryResourcesState(now), attemptKey = req => req.socket.remoteAddress || 'unknown', challenge, verifyCaptcha}) {
   let verifying = 0;
   const burst = localBurst(30, 60_000, now);
+  const rawCookie = req => (req.headers.cookie || '').split(';').map(v => v.trim()).find(v => v.startsWith(COOKIE + '='))?.slice(COOKIE.length + 1);
   function token(req) {
-    const value = (req.headers.cookie || '').split(';').map(v => v.trim()).find(v => v.startsWith(COOKIE + '='))?.slice(COOKIE.length + 1);
+    // Reject forged cloud cookies before doing a Firestore lookup.
+    const value = challenge ? challenge.reader(rawCookie(req)) : rawCookie(req);
     return value && /^[a-f0-9]{64}$/.test(value) ? digest(value) : '';
   }
   function cookie(value, maxAge) {
@@ -37,34 +39,45 @@ export function createResourcesHandler({credentials, store, allowOrigin, secureC
       if (req.headers['sec-fetch-site'] === 'cross-site' || (req.headers.origin && !allowOrigin(req.headers.origin))) return json(403, {message: 'Request not allowed.'});
       if (req.method === 'POST' && !allowOrigin(req.headers.origin)) return json(403, {message: 'Request not allowed.'});
       const sessionKey = token(req);
+      if (path === '/api/resources/challenge' && req.method === 'GET') {
+        // Do not replace a reader's authenticated session on a retry/second tab.
+        if (challenge && !sessionKey && !challenge.identify(rawCookie(req))) res.setHeader('Set-Cookie', cookie(challenge.issue(), 900));
+        return json(200, {ok: true});
+      }
       if (path === '/api/resources/login' && req.method === 'POST') {
         if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) return json(415, {message: 'Use JSON.'});
         if (!burst()) {res.setHeader('Retry-After', '60'); return json(429, {message: 'Please try again shortly.'});}
-        const ip = attemptKey(req);
-        if (verifying >= 4 || !await state.attempt(ip)) {
-          res.setHeader('Retry-After', '900'); return json(429, {message: 'Too many attempts. Please try again in 15 minutes.'});
-        }
-        if (Number(req.headers['content-length']) > 2048) return json(413, {message: 'Request too large.'});
+        const client = challenge ? (challenge.identify(rawCookie(req)) || sessionKey) : attemptKey(req);
+        if (!client) return json(403, {message: 'Please refresh the page and try again.'});
+        const maxBody = verifyCaptcha ? 8192 : 2048;
+        if (Number(req.headers['content-length']) > maxBody) return json(413, {message: 'Request too large.'});
         const chunks = [];
         let bytes = 0;
         for await (const part of req) {
           bytes += part.length;
-          if (bytes > 2048) return json(413, {message: 'Request too large.'});
+          if (bytes > maxBody) return json(413, {message: 'Request too large.'});
           chunks.push(part);
         }
-        let password;
-        try { password = JSON.parse(Buffer.concat(chunks).toString('utf8')).password; } catch { return json(400, {message: 'Invalid request.'}); }
+        let password, captchaToken;
+        try { ({password, token: captchaToken} = JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch { return json(400, {message: 'Invalid request.'}); }
         if (typeof password !== 'string' || !password || Buffer.byteLength(password) > 1024) return json(400, {message: 'Enter the password from your book.'});
+        if (verifyCaptcha && (typeof captchaToken !== 'string' || !captchaToken || captchaToken.length > 6000)) return json(400, {message: 'Please complete the spam check and try again.'});
+        // Reserve the durable global/browser allowance BEFORE assessing CAPTCHA
+        // or hashing passwords; invalid CAPTCHA also consumes that allowance.
+        if (verifying >= 4 || !await state.attempt(client)) {
+          res.setHeader('Retry-After', '900'); return json(429, {message: 'Too many attempts. Please try again in 15 minutes.'});
+        }
+        if (verifyCaptcha && !await verifyCaptcha(captchaToken, req.headers['user-agent'])) return json(403, {message: 'The spam check could not verify this request. Please try again.'});
         if (verifying >= 4) return json(429, {message: 'Please try again shortly.'});
         let computed;
         verifying++;
         try { computed = await scrypt(password, credentials.salt, 64); } finally { verifying--; }
         if (!timingSafeEqual(computed, Buffer.from(credentials.hash, 'hex'))) return json(401, {message: 'That password wasn’t recognized. Please try again.'});
-        await state.clearAttempts(ip);
+        await state.clearAttempts(client);
         const value = randomBytes(32).toString('hex');
         const expires = now() + TTL;
         await state.rotate(sessionKey, digest(value), expires);
-        res.setHeader('Set-Cookie', cookie(value, TTL / 1000));
+        res.setHeader('Set-Cookie', cookie(challenge ? challenge.session(value) : value, TTL / 1000));
         return json(200, {expires});
       }
       if (path === '/api/resources/logout' && req.method === 'POST') {

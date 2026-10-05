@@ -13,9 +13,12 @@ test('staging gate protects HTML, assets, API, and error routes on any hostname;
   await writeFile(path.join(directory, 'app.js'), 'PRIVATE SCRIPT');
   await writeFile(path.join(directory, '404.html'), 'PRIVATE 404');
   let resourceRequests = 0;
+  let publishingRequests = 0;
   const credential = 'reviewer:test-fixture';
   const basicHash = createHash('sha256').update(credential).digest('hex');
-  const server = createServer(stagingGateway({directory, basicHash, resources: async (_req, res) => {resourceRequests++; res.writeHead(401); res.end('Book password still required');}}));
+  const server = createServer(stagingGateway({directory, basicHash,
+    publishing: async (_req, res) => {publishingRequests++; res.writeHead(401); res.end('Independent service authentication');},
+    resources: async (_req, res) => {resourceRequests++; res.writeHead(401); res.end('Book password still required');}}));
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(async () => { await new Promise(resolve => {server.close(resolve); server.closeAllConnections();}); await rm(directory, {recursive: true}); });
   const origin = `http://127.0.0.1:${server.address().port}`;
@@ -27,7 +30,13 @@ test('staging gate protects HTML, assets, API, and error routes on any hostname;
     assert.doesNotMatch(await response.text(), /PRIVATE/);
   }
   assert.equal(resourceRequests, 0);
+  assert.equal((await fetch(origin + '/contact', {method: 'POST'})).status, 401);
+  assert.equal(publishingRequests, 0);
+  assert.equal((await fetch(origin + '/sanity-hook', {method: 'POST'})).status, 401);
+  assert.equal(publishingRequests, 1);
   const headers = {Authorization: 'Basic ' + Buffer.from(credential).toString('base64')};
+  assert.equal((await fetch(origin + '/contact', {method: 'POST', headers})).status, 401);
+  assert.equal(publishingRequests, 2);
   assert.equal(await (await fetch(origin + '/', {headers})).text(), 'PRIVATE STAGING');
   assert.equal(await (await fetch(origin + '/app.js', {headers})).text(), 'PRIVATE SCRIPT');
   assert.equal((await fetch(origin + '/api/resources/catalog', {headers})).status, 401);

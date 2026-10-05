@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {createResourcesHandler, passwordRecord} from '../src/resources.mjs';
+import {readerChallenge, readerCaptcha} from '../src/reader-protection.mjs';
 const credentials = await passwordRecord('book-fixture-password');
 const id = 'a'.repeat(64);
 const origin = 'https://reader.example';
@@ -124,4 +125,52 @@ test('cloud media links are issued only after authentication and HEAD does not i
   await post('/logout', {}, {Cookie: cookie});
   assert.equal((await request(route, {redirect: 'manual', headers: {Cookie: cookie}})).status, 401);
   assert.equal(issued, 1);
+});
+
+test('public reader login requires a signed challenge and valid CAPTCHA before password verification', async t => {
+  let assessments = 0;
+  const {request, post, advance} = await setup(t, {challenge: readerChallenge('s'.repeat(64)),
+    verifyCaptcha: async token => {assessments++; return token === 'valid-human-token';}});
+  const body = {password: 'book-fixture-password', token: 'valid-human-token'};
+  assert.equal((await post('/login', body)).status, 403);
+  const response = await request('/challenge');
+  const cookie = response.headers.get('set-cookie').split(';')[0];
+  assert.match(cookie, /^__session=p\./);
+  assert.equal((await request('/catalog', {headers: {Cookie: cookie}})).status, 401);
+  assert.equal((await post('/login', {password: body.password}, {Cookie: cookie})).status, 400);
+  assert.equal(assessments, 0);
+  for (let n = 0; n < 10; n++) assert.equal((await post('/login', {...body, token: 'invalid'}, {Cookie: cookie, 'X-Forwarded-For': `1.2.3.${n}`})).status, 403);
+  assert.equal((await post('/login', body, {Cookie: cookie})).status, 429);
+  assert.equal(assessments, 10);
+  advance(900_001);
+  const login = await post('/login', body, {Cookie: cookie});
+  assert.equal(login.status, 200);
+  const session = login.headers.get('set-cookie').split(';')[0];
+  assert.equal((await request('/catalog', {headers: {Cookie: session}})).status, 200);
+  assert.equal((await request('/challenge', {headers: {Cookie: session}})).headers.get('set-cookie'), null);
+});
+
+test('reader challenges reject tampering and expiry; CAPTCHA requires the right action, host and score', async () => {
+  let time = Date.now();
+  const challenge = readerChallenge('k'.repeat(64), () => time);
+  const value = challenge.issue();
+  assert.ok(challenge.identify(value));
+  const opaque = 'a'.repeat(64);
+  assert.equal(challenge.reader(opaque), null);
+  assert.equal(challenge.reader(challenge.session(opaque)), opaque);
+  assert.equal(challenge.reader(challenge.session(opaque).replace('s.a', 's.b')), null);
+  assert.equal(challenge.identify(value.slice(0, -1) + (value.endsWith('a') ? 'b' : 'a')), null);
+  time += 900_001;
+  assert.equal(challenge.identify(value), null);
+  let result = {tokenProperties: {valid: true, action: 'resources_login', hostname: 'reader.example'}, riskAnalysis: {score: 0.9}};
+  const verify = readerCaptcha({project: 'fixture', siteKey: 'fixture', origins: [origin], auth: {getAccessToken: async () => 'fixture'}, request: async () => new Response(JSON.stringify(result))});
+  assert.equal(await verify('token'), true);
+  for (const changes of [{valid: false}, {action: 'contact'}, {hostname: 'attacker.example'}]) {
+    const saved = {...result.tokenProperties}; Object.assign(result.tokenProperties, changes);
+    assert.equal(await verify('token'), false); result.tokenProperties = saved;
+  }
+  result.riskAnalysis.score = 0.1;
+  assert.equal(await verify('token'), false);
+  delete result.riskAnalysis;
+  assert.equal(await verify('token'), false);
 });

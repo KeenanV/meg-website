@@ -5,6 +5,7 @@ import {Firestore, Timestamp} from '@google-cloud/firestore';
 import {createResourcesHandler} from './resources.mjs';
 import {sanityPrivateCatalog} from './private-catalog.mjs';
 import {firestoreAllowance} from './abuse.mjs';
+import {readerChallenge, readerCaptcha} from './reader-protection.mjs';
 
 const hash = value => createHash('sha256').update(value).digest('hex');
 export function firestoreResourcesState(db, namespace, now = Date.now) {
@@ -45,8 +46,8 @@ export function firestoreResourcesState(db, namespace, now = Date.now) {
   };
 }
 
-export function cloudResources({project, bucketName, credentials, origins, sanity,
-  clientIdentity = () => 'staging-reviewers'}) {
+export function cloudResources({project, bucketName, credentials, origins, sanity, siteKey, signingSecret}) {
+  if (!credentials?.hash) throw new Error('Reader password configuration required');
   const bucket = new Storage({projectId: project}).bucket(bucketName);
   const db = new Firestore({projectId: project});
   // A private snapshot for the first staging test. Studio private uploads will
@@ -81,8 +82,7 @@ export function cloudResources({project, bucketName, credentials, origins, sanit
   };
   return createResourcesHandler({credentials, store, allowOrigin: origin => origins.includes(origin),
     state: firestoreResourcesState(db, credentials.hash),
-    // Staging is already behind an independent high-entropy access credential.
-    // Share its small reader-password attempt allowance; never trust arbitrary XFF.
-    attemptKey: clientIdentity,
+    challenge: readerChallenge(signingSecret),
+    verifyCaptcha: readerCaptcha({project, siteKey, origins}),
   });
 }

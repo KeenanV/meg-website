@@ -1,3 +1,4 @@
+import {captchaToken} from './captcha';
 import {setupPlayer} from './meditation-player';
 import {recordingLabel} from '../lib/audio';
 import {bindLiquidInteraction, unbindLiquidInteraction} from './liquid-interaction';
@@ -15,6 +16,7 @@ function setupAccess(root: HTMLElement) {
   const submit = form.querySelector<HTMLButtonElement>('button')!;
   const status = root.querySelector<HTMLElement>('[data-resources-status]')!;
   const logout = root.querySelector<HTMLButtonElement>('[data-resources-logout]')!;
+  const logoutLabel = logout.querySelector<HTMLElement>('[data-lock-label]')!;
   let cleanup: (() => void) | undefined;
   let expiry: ReturnType<typeof setTimeout> | undefined;
   let generation = 0;
@@ -29,6 +31,7 @@ function setupAccess(root: HTMLElement) {
     clearTimeout(expiry); cleanup?.(); cleanup = undefined;
     mount.querySelectorAll<HTMLElement>('[data-liquid]').forEach(unbindLiquidInteraction);
     mount.replaceChildren(); content.hidden = true; gate.hidden = false; status.textContent = message;
+    logout.hidden = true; logoutLabel.textContent = 'Lock resources';
     password.value = '';
     if (focus) password.focus({preventScroll: true});
   }
@@ -66,6 +69,7 @@ function setupAccess(root: HTMLElement) {
     cardTemplate.remove();
     library.querySelector<HTMLElement>('[data-recordings-empty]')!.hidden = !!grid.children.length;
     mount.append(fragment); gate.hidden = true; content.hidden = false;
+    logout.hidden = false;
     cleanup = setupPlayer(library);
     library.querySelectorAll<HTMLElement>('[data-liquid]').forEach(el => bindLiquidInteraction(el, motion));
     // Clear already-delivered content and stop buffered playback when the session expires.
@@ -75,7 +79,10 @@ function setupAccess(root: HTMLElement) {
   form.addEventListener('submit', async event => {
     event.preventDefault(); submit.disabled = true; status.textContent = 'Unlocking…';
     try {
-      const response = await api('login', {password: password.value});
+      const challenge = await api('challenge');
+      if (!challenge.ok) { status.textContent = 'Unable to start sign-in. Please try again shortly.'; return; }
+      const token = root.dataset.siteKey ? await captchaToken(root.dataset.siteKey, 'resources_login') : undefined;
+      const response = await api('login', {password: password.value, token});
       password.value = '';
       const data = await response.json();
       if (!response.ok) { status.textContent = data.message || 'Unable to unlock. Please try again.'; password.focus(); return; }
@@ -87,9 +94,9 @@ function setupAccess(root: HTMLElement) {
     logout.disabled = true;
     try {
       const response = await api('logout', {});
-      if (!response.ok) throw new Error();
+      if (!response.ok) { logoutLabel.textContent = 'Could not lock — try again'; return; }
       lock('Resources are locked.', true);
-    } catch { logout.textContent = 'Could not lock — try again'; }
+    } catch { logoutLabel.textContent = 'Could not lock — try again'; }
     finally { logout.disabled = false; }
   });
   // Never restore protected DOM from the back/forward cache without rechecking the server.

@@ -2,7 +2,10 @@ import {useEffect, useState} from 'react';
 import {set, unset, useClient, useSource, type ObjectInputProps} from 'sanity';
 
 type Recording = {_type?: string; objectKey?: string; generation?: string; size?: number};
-const endpoint = 'https://megvandeusen-staging.web.app/api/studio/uploads';
+const environments: Record<string, {endpoint: string; bucket: string}> = {
+  staging: {endpoint: 'https://megvandeusen-staging.web.app/api/studio/uploads', bucket: 'megvandeusen-staging-resources'},
+  production: {endpoint: 'https://megvandeusen.com/api/studio/uploads', bucket: 'megvandeusen-website-resources'},
+};
 
 export function PrivateRecordingInput(props: ObjectInputProps<Recording>) {
   const client = useClient({apiVersion: '2025-10-26'});
@@ -10,21 +13,22 @@ export function PrivateRecordingInput(props: ObjectInputProps<Recording>) {
   const [token, setToken] = useState<string | null>(client.config().token || null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const staging = client.config().dataset === 'staging';
+  const dataset = client.config().dataset || '';
+  const environment = environments[dataset];
   useEffect(() => {
     const subscription = source.auth.token?.subscribe(value => setToken(value));
     return () => subscription?.unsubscribe();
   }, [source.auth]);
   async function upload(file: File) {
-    if (!staging || !token) {setMessage('Sign in to staging Studio to upload privately.'); return;}
+    if (!environment || !token) {setMessage('Sign in to Studio to upload privately.'); return;}
     if (!file.name.toLowerCase().endsWith('.mp3') || file.size < 4 || file.size > 100 * 1024 * 1024) {
       setMessage('Choose an MP3 smaller than 100 MB.'); return;
     }
     setBusy(true); setMessage('Uploading privately…');
     async function api(route: string, body: object) {
-      const response = await fetch(endpoint + route, {method: 'POST', credentials: 'omit',
+      const response = await fetch(environment.endpoint + route, {method: 'POST', credentials: 'omit',
         headers: {'Content-Type': 'application/json', 'X-Sanity-Token': token!},
-        body: JSON.stringify({dataset: 'staging', ...body}), signal: AbortSignal.timeout(30_000)});
+        body: JSON.stringify({dataset, ...body}), signal: AbortSignal.timeout(30_000)});
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Private upload failed.');
       return result;
@@ -32,7 +36,7 @@ export function PrivateRecordingInput(props: ObjectInputProps<Recording>) {
     try {
       const started = await api('/start', {size: file.size, contentType: 'audio/mpeg'});
       const target = new URL(started.url);
-      if (target.protocol !== 'https:' || !['storage.googleapis.com', 'megvandeusen-staging-resources.storage.googleapis.com'].includes(target.hostname)) {
+      if (target.protocol !== 'https:' || !['storage.googleapis.com', `${environment.bucket}.storage.googleapis.com`].includes(target.hostname)) {
         throw new Error('Unexpected upload destination.');
       }
       const form = new FormData();
@@ -49,14 +53,14 @@ export function PrivateRecordingInput(props: ObjectInputProps<Recording>) {
     } finally {setBusy(false);}
   }
   return <div style={{padding: 16, border: '1px solid #80808060', borderRadius: 6}}>
-    <p>Stored in private staging storage. Only the file reference is saved in Sanity.</p>
+    <p>Stored in private {dataset} storage. Only the file reference is saved in Sanity.</p>
     {props.value?.objectKey && <p>MP3 attached · {((props.value.size || 0) / 1024 / 1024).toFixed(1)} MB</p>}
     <label>
       {props.value?.objectKey ? 'Replace MP3' : 'Choose MP3'}
-      <input type="file" accept="audio/mpeg,.mp3" disabled={!staging || props.readOnly || busy || !token}
+      <input type="file" accept="audio/mpeg,.mp3" disabled={!environment || props.readOnly || busy || !token}
         onChange={event => {const file = event.currentTarget.files?.[0]; event.currentTarget.value = ''; if (file) void upload(file);}} />
     </label>
-    {props.value && <button type="button" disabled={props.readOnly || busy || !staging} onClick={() => props.onChange(unset())}>Remove attachment</button>}
-    <p role="status">{message || (!staging ? 'Private uploads will be enabled in production after staging review.' : !token ? 'Sign in again if the upload control remains disabled.' : '')}</p>
+    {props.value && <button type="button" disabled={props.readOnly || busy || !environment} onClick={() => props.onChange(unset())}>Remove attachment</button>}
+    <p role="status">{message || (!environment ? 'This Studio environment does not support private uploads.' : !token ? 'Sign in again if the upload control remains disabled.' : '')}</p>
   </div>;
 }

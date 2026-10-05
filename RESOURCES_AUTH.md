@@ -1,4 +1,4 @@
-# Protected Resources: local and staging implementation
+# Protected Resources
 
 ## Local testing
 
@@ -30,18 +30,22 @@ can test on the same network. HTTP/LAN is for this demo only; cloud must use HTT
   only after successful authentication.
 - The password is checked server-side using scrypt and constant-time comparison.
   Random 256-bit session tokens are stored only as SHA-256 hashes server-side.
+  Cloud cookies also carry an HMAC, allowing forged tokens to be rejected before
+  a Firestore lookup; the signature alone never grants access to a revoked session.
 - The `__session` cookie (required for Firebase Hosting rewrites) uses HttpOnly,
   SameSite=Strict, and a restricted API path. Secure is on by
   default in the handler and off only in the local HTTP integration.
 - All catalog, image and audio endpoint requests authenticate the session.
-  Local audio streams through the endpoint with Range support. In staging,
+  Local audio streams through the endpoint with Range support. In cloud deployments,
   authenticated audio GETs redirect to a GCS URL valid for 15 minutes; this avoids
   Firebase Hosting dropping Range headers on its dynamic proxy. The bucket itself
   remains private. A copied signed URL works until its expiry, including after
   logout; logout immediately revokes the session and prevents obtaining new URLs.
   The player can reauthorize once after an expired-link error and restore position.
 - POST requires an allowed Origin, cross-site requests are rejected, and login
-  attempts have a bounded per-address cooldown and concurrency limit.
+  attempts have a bounded per-browser cooldown, global allowance and concurrency limit.
+  Cloud login also requires a valid reCAPTCHA assessment for `resources_login`.
+  Local development uses a separate fixture server without CAPTCHA.
 - Sessions expire after eight hours. Logout revokes the token, clears the delivered
   DOM and buffered audio, and invalidates copied cookies. Page restoration rechecks
   authorization. API/media responses are private/no-store.
@@ -52,25 +56,26 @@ These controls do not stop an authorized reader from capturing the recording.
 Existing Sanity CDN files remain public until deliberately migrated/retired; a local
 copy does not revoke access to those originals.
 
-## Before production deployment
+## Production preparation and release gate
 
-Production is not configured for this feature. The static production output fails
-closed until an authenticated same-origin `/api/resources/**` service is deployed.
-Do not merge this change into the production deployment ahead of that service.
+The production private bucket, password hash in Secret Manager, Firestore TTLs,
+and both checksum-verified recording copies were prepared October 5, 2026.
+Production's existing backend code remains live until the protected release is
+promoted through `staging` to `master`. The workflow deploys its backend before
+Studio and Hosting. The production Resources password is kept only in an
+owner-readable ignored file and Secret Manager; it is not a staging fixture.
 
-The staging adapter uses a private bucket and Firestore for sessions and attempt
-limits, with TTL cleanup. Credential hashes namespace the sessions so changing the
-reader password invalidates old sessions when the new secret version is deployed.
-Local development uses bounded in-process maps. The staging reader-password
-attempt limit is shared among reviewers behind the independent outer credential;
-choose a verified trusted-ingress rate-limit policy before making the reader gate
-public in production. Keep fixture credentials out of cloud build contexts.
+Each environment uses its own GCS bucket and Firestore sessions/attempt limits.
+Changing the password hash namespaces new sessions and invalidates old ones once
+its new secret version is deployed. The approved public-login protection is
+CAPTCHA plus application limits. Cloud Armor remains on hold; global allowances
+can be exhausted by distributed abuse. See ABUSE_PROTECTION.md.
 
-Production Studio still uploads public Sanity assets. Staging Studio now has a
-private upload control authenticated as a Sanity editor, issuing tightly scoped
-uploads to the staging bucket and storing only object metadata in Sanity. Never
-treat copying a public Sanity MP3 as revoking access to its original. Preserve
-the two existing originals until the production private migration is verified.
+Both Studio configurations now use private MP3 uploads authenticated as the
+current Sanity editor. The production Studio release must follow its new backend.
+The two original public MP3 assets and their legacy references are retained until
+production unlock, playback, seeking and logout pass. Their private copies do
+not revoke the original public URLs. See ENVIRONMENTS.md for release order.
 
 Approved staging settings: GCP/Firebase project `megvandeusen-staging`, website
 `staging.megvandeusen.com`, Sanity dataset `staging`, and a separate $10/month alert
@@ -103,10 +108,11 @@ complete nonprod plan remains in `NONPROD_PLAN.local.md` (untracked).
   requests after deployment. Anyone given that password can access staging.
 - The runtime can read only the staging media bucket, access staging Firestore,
   read its staging secret, and sign as its own identity. It has no production roles.
-- Contact sending is deliberately disabled in this initial staging build; it
-  cannot send messages through the production contact endpoint.
+- That first staging build disabled contact delivery. The October 5 configuration
+  now supports contact through the staging backend, constrained to the owner’s
+  test inbox. It has separate CAPTCHA and limits; production delivery is unchanged.
 
-## Staging deployment and remaining integration
+## Staging deployment
 
 `node scripts/prepare-staging-build.mjs` builds from Sanity's staging dataset and
 assembles an allowlisted container context under `.private/`. It never copies
@@ -121,8 +127,10 @@ The Firebase alias is `https://megvandeusen-staging.web.app` and uses the same g
 
 Private Studio uploads and the published Sanity catalog are now deployed and
 verified in staging; see ABUSE_PROTECTION.md for controls and rollout requirements.
-Still pending: separately deployed staging Studio, GitHub staging workflow/webhook
-identities, and staging contact delivery configuration. The Sanity staging dataset
+The hosted staging Studio, deployment identity, signed Sanity webhook, and contact
+configuration are now prepared. GitHub automation becomes active when the workflow
+PR is merged into staging; a successful environment deployment must precede the
+production promotion. See ENVIRONMENTS.md. The Sanity staging dataset
 is public and contains copied public site content/images and private recording
 object references, but no private audio bytes; do not put secrets
 or confidential draft content in a public dataset. The site access gate does not

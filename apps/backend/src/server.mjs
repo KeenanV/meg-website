@@ -1,56 +1,31 @@
-import { createServer } from 'node:http';
-import { GoogleAuth } from 'google-auth-library';
-import { createHandler } from './handler.mjs';
+import {createServer} from 'node:http';
+import {createServiceHandler} from './service-handler.mjs';
+import {productionGateway} from './production-gateway.mjs';
+import {cloudResources} from './resources-cloud.mjs';
+import {Storage} from '@google-cloud/storage';
 import {Firestore} from '@google-cloud/firestore';
-import {contactProtection, firestoreAllowance} from './abuse.mjs';
+import {firestoreAllowance} from './abuse.mjs';
+import {bucketUploads, sanityEditor, studioUploadHandler} from './studio-upload.mjs';
 
-const config = {
-  origins: (process.env.CONTACT_ORIGINS ?? '').split(',').map(value => value.trim()).filter(Boolean),
-  recipient: process.env.CONTACT_RECIPIENT,
-  sender: process.env.CONTACT_SENDER,
-  resendKey: process.env.RESEND_API_KEY,
-  siteKey: process.env.RECAPTCHA_SITE_KEY,
-  project: process.env.GOOGLE_CLOUD_PROJECT,
-  githubToken: process.env.GITHUB_WORKFLOW_TOKEN,
-  webhookSecret: process.env.SANITY_WEBHOOK_SECRET,
-  sanityProject: process.env.SANITY_PROJECT_ID,
-  sanityDataset: process.env.SANITY_DATASET,
-};
-const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
-async function post(url, authorization, body, extraHeaders = {}) {
-  const response = await fetch(url, {
-    method: 'POST', signal: AbortSignal.timeout(10_000),
-    headers: { Authorization: authorization, 'Content-Type': 'application/json', ...extraHeaders },
-    body: JSON.stringify(body),
+const project = 'megvandeusen-website';
+if (process.env.GOOGLE_CLOUD_PROJECT !== project) throw new Error('Production server requires the production project');
+let resources, studio;
+if (process.env.RESOURCES_ACCESS) {
+  const credentials = JSON.parse(process.env.RESOURCES_ACCESS);
+  resources = cloudResources({project, bucketName: 'megvandeusen-website-resources', credentials,
+    signingSecret: credentials.hash, siteKey: process.env.RECAPTCHA_SITE_KEY,
+    sanity: {project: 'ap0mc9ri', dataset: 'production'},
+    origins: ['https://megvandeusen.com', 'https://www.megvandeusen.com'],
   });
-  if (!response.ok) throw new Error('Upstream request failed');
-  return response;
+  const db = new Firestore({projectId: project});
+  studio = studioUploadHandler({dataset: 'production',
+    origins: ['http://localhost:3333', 'https://megvandeusen.sanity.studio'],
+    authorize: token => sanityEditor(token, 'ap0mc9ri'),
+    uploads: bucketUploads(new Storage({projectId: project}).bucket('megvandeusen-website-resources'), db),
+    allow: firestoreAllowance(db, 'studio'),
+  });
 }
-
-const handler = createHandler({
-  config,
-  // Never silently fall back to process-local counters in a cloud deployment.
-  protection: contactProtection(firestoreAllowance(new Firestore({projectId: config.project}), 'contact')),
-  async assess(token, userAgent) {
-    const accessToken = await auth.getAccessToken();
-    const response = await post(
-      `https://recaptchaenterprise.googleapis.com/v1/projects/${config.project}/assessments`,
-      `Bearer ${accessToken}`,
-      { event: { token, siteKey: config.siteKey, expectedAction: 'contact', userAgent } },
-    );
-    return response.json();
-  },
-  async sendEmail(payload, key) {
-    await post('https://api.resend.com/emails', `Bearer ${config.resendKey}`, payload, { 'Idempotency-Key': key });
-  },
-  async dispatch() {
-    await post('https://api.github.com/repos/KeenanV/meg-website/actions/workflows/deploy.yml/dispatches',
-      `Bearer ${config.githubToken}`, { ref: 'master' }, {
-        Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'meg-website-publishing',
-      });
-  },
-});
+const handler = productionGateway({service: createServiceHandler(), resources, studio});
 
 const server = createServer({ maxHeaderSize: 16_384, requestTimeout: 20_000, headersTimeout: 15_000 }, handler);
 server.listen(Number(process.env.PORT || 8080), '0.0.0.0');

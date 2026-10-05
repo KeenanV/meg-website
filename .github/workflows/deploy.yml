@@ -1,11 +1,9 @@
-name: Deploy website
+name: Deploy production
 
 on:
   push:
     branches: [master]
   workflow_dispatch:
-  repository_dispatch:
-    types: [sanity-published]
 
 permissions:
   contents: read
@@ -18,14 +16,18 @@ concurrency:
 jobs:
   deploy:
     if: github.ref == 'refs/heads/master'
+    environment:
+      name: Production
+      url: https://megvandeusen.com
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     permissions:
       contents: read
       id-token: write
     env:
       PUBLIC_SANITY_PROJECT_ID: ap0mc9ri
       PUBLIC_SANITY_DATASET: production
+      SANITY_STUDIO_DATASET: production
       SITE_URL: https://megvandeusen.com
       PUBLIC_CONTACT_API_URL: https://website-backend-348807509213.us-west1.run.app/contact
       PUBLIC_RECAPTCHA_SITE_KEY: 6LdoLc8tAAAAAKmmIu7i3h3CrQPqIl5R-HAISA0Z
@@ -36,24 +38,20 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            apps/web/package-lock.json
-            apps/studio/package-lock.json
-            apps/backend/package-lock.json
-      - run: npm ci
-      - run: npm ci --prefix apps/web
-      - run: npm ci --prefix apps/studio
-      - run: npm ci --prefix apps/backend
+      - uses: ./.github/actions/setup-project
       - run: npm run verify
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           project_id: megvandeusen-website
           workload_identity_provider: projects/348807509213/locations/global/workloadIdentityPools/github/providers/meg-website
           service_account: github-hosting@megvandeusen-website.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - name: Deploy contact and publishing backend
+        run: node scripts/deploy-backend.mjs
+      - name: Deploy production Studio
+        working-directory: apps/studio
+        env:
+          SANITY_AUTH_TOKEN: ${{ secrets.SANITY_DEPLOY_TOKEN }}
+        run: npx --no-install sanity deploy --yes --schema-required
       - name: Deploy checked output to the configured channel
         run: node scripts/deploy-hosting.mjs
