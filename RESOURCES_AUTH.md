@@ -66,11 +66,11 @@ attempt limit is shared among reviewers behind the independent outer credential;
 choose a verified trusted-ingress rate-limit policy before making the reader gate
 public in production. Keep fixture credentials out of cloud build contexts.
 
-Studio currently uploads public Sanity assets. Before private cloud publishing,
-add a private upload control authenticated as a Sanity editor, issuing tightly
-scoped uploads to the environment's private bucket; store only the object key in
-Sanity. Never publish a public Sanity MP3 and then treat a copied private object as
-protection. Preserve the two existing originals until private playback is verified.
+Production Studio still uploads public Sanity assets. Staging Studio now has a
+private upload control authenticated as a Sanity editor, issuing tightly scoped
+uploads to the staging bucket and storing only object metadata in Sanity. Never
+treat copying a public Sanity MP3 as revoking access to its original. Preserve
+the two existing originals until the production private migration is verified.
 
 Approved staging settings: GCP/Firebase project `megvandeusen-staging`, website
 `staging.megvandeusen.com`, Sanity dataset `staging`, and a separate $10/month alert
@@ -115,13 +115,15 @@ credentials or recordings into the image. With Node 24 and gcloud on PATH,
 Firebase Hosting to that Cloud Run revision. `--prepared` reuses the last assembled
 context. The local deployment helper requires the owner's existing gcloud login.
 
-The custom domain is `staging.megvandeusen.com`; HTTPS provisioning may lag DNS.
+The custom domain is `staging.megvandeusen.com`; valid HTTPS and anonymous-access
+denial were verified on October 4, 2026.
 The Firebase alias is `https://megvandeusen-staging.web.app` and uses the same gate.
 
-Still pending: private Studio upload control and catalog publishing, separately
-deployed staging Studio, GitHub staging workflow/webhook identities, and staging
-contact delivery configuration. The current private recordings catalog is a
-snapshot, not a live Sanity publishing integration. The Sanity staging dataset
-is public and contains copied public site content/images only; do not put secrets
+Private Studio uploads and the published Sanity catalog are now deployed and
+verified in staging; see ABUSE_PROTECTION.md for controls and rollout requirements.
+Still pending: separately deployed staging Studio, GitHub staging workflow/webhook
+identities, and staging contact delivery configuration. The Sanity staging dataset
+is public and contains copied public site content/images and private recording
+object references, but no private audio bytes; do not put secrets
 or confidential draft content in a public dataset. The site access gate does not
 change Sanity CDN visibility.

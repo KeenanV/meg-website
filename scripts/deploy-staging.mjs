@@ -16,7 +16,7 @@ run('gcloud', ['run', 'deploy', 'staging-website', '--source='+context, '--regio
   '--project=megvandeusen-staging', '--account=keenanvandeusen@gmail.com',
   '--service-account=staging-website@megvandeusen-staging.iam.gserviceaccount.com',
   '--build-service-account=projects/megvandeusen-staging/serviceAccounts/staging-builder@megvandeusen-staging.iam.gserviceaccount.com',
-  '--set-env-vars=GOOGLE_CLOUD_PROJECT=megvandeusen-staging', '--set-secrets=STAGING_ACCESS=staging-access:1',
+  '--set-env-vars=GOOGLE_CLOUD_PROJECT=megvandeusen-staging,PRIVATE_CATALOG=sanity', '--set-secrets=STAGING_ACCESS=staging-access:1',
   '--min=0', '--max=1', '--max-instances=1', '--concurrency=20', '--cpu=1', '--memory=512Mi',
   '--timeout=60s', '--cpu-throttling', '--no-cpu-boost', '--allow-unauthenticated', '--quiet']);
 run('/opt/homebrew/bin/python3.14', ['scripts/deploy-staging-hosting.py']);

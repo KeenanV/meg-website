@@ -3,6 +3,7 @@ import {stat} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {pipeline} from 'node:stream/promises';
 import path from 'node:path';
+import {localBurst} from './abuse.mjs';
 
 const types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg',
@@ -10,8 +11,9 @@ const types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 
 // Staging-only outer gate: require the separate randomly generated reviewer
 // credential on every request, including assets, APIs, and direct run.app URLs.
-export function stagingGateway({directory, basicHash, resources}) {
+export function stagingGateway({directory, basicHash, resources, studio}) {
   const root = path.resolve(directory);
+  const failedReviewerAttempts = localBurst(60, 60_000);
   return async (req, res) => {
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
@@ -22,11 +24,19 @@ export function stagingGateway({directory, basicHash, resources}) {
     const reply = (code, body) => { res.writeHead(code, {'Content-Type': 'text/plain; charset=utf-8'}); res.end(body); };
     if (!/^[a-f0-9]{64}$/.test(basicHash || '')) return reply(503, 'Staging access is not configured.');
     try {
+      // Studio uploads use independently verified Sanity editor authentication.
+      // Preflight exposes no content; all operations enforce editor membership.
+      const uploadRoute = new URL(req.url, 'http://localhost').pathname;
+      if (studio && ['/api/studio/uploads/start', '/api/studio/uploads/finish'].includes(uploadRoute)) return await studio(req, res);
       const authorization = req.headers.authorization || '';
       const basic = /^Basic ([A-Za-z0-9+/]+={0,2})$/i.exec(authorization);
       const value = basic && authorization.length <= 1024 ? Buffer.from(basic[1], 'base64') : Buffer.alloc(0);
       const supplied = createHash('sha256').update(value).digest();
       if (!timingSafeEqual(supplied, Buffer.from(basicHash, 'hex'))) {
+        if (!failedReviewerAttempts()) {
+          res.setHeader('Retry-After', '60');
+          return reply(429, 'Too many requests. Please try again shortly.');
+        }
         res.setHeader('WWW-Authenticate', 'Basic realm="Meg website staging", charset="UTF-8"');
         return reply(401, 'Private staging environment. Reviewer credentials required.');
       }

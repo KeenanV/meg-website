@@ -1,6 +1,7 @@
 import {randomBytes, createHash, scrypt as scryptCallback, timingSafeEqual} from 'node:crypto';
 import {promisify} from 'node:util';
 import {memoryResourcesState} from './resources-state.mjs';
+import {localBurst} from './abuse.mjs';
 const scrypt = promisify(scryptCallback);
 const digest = value => createHash('sha256').update(value).digest('hex');
 // Firebase Hosting forwards only this cookie to Cloud Run rewrites.
@@ -16,6 +17,7 @@ export async function passwordRecord(password) {
 export function createResourcesHandler({credentials, store, allowOrigin, secureCookies = true, now = Date.now,
   state = memoryResourcesState(now), attemptKey = req => req.socket.remoteAddress || 'unknown'}) {
   let verifying = 0;
+  const burst = localBurst(30, 60_000, now);
   function token(req) {
     const value = (req.headers.cookie || '').split(';').map(v => v.trim()).find(v => v.startsWith(COOKIE + '='))?.slice(COOKIE.length + 1);
     return value && /^[a-f0-9]{64}$/.test(value) ? digest(value) : '';
@@ -37,6 +39,7 @@ export function createResourcesHandler({credentials, store, allowOrigin, secureC
       const sessionKey = token(req);
       if (path === '/api/resources/login' && req.method === 'POST') {
         if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) return json(415, {message: 'Use JSON.'});
+        if (!burst()) {res.setHeader('Retry-After', '60'); return json(429, {message: 'Please try again shortly.'});}
         const ip = attemptKey(req);
         if (verifying >= 4 || !await state.attempt(ip)) {
           res.setHeader('Retry-After', '900'); return json(429, {message: 'Too many attempts. Please try again in 15 minutes.'});

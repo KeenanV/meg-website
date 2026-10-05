@@ -9,6 +9,9 @@ function run(command, args) {
 }
 run('npm', ['run', 'check', '--prefix', 'apps/backend']);
 run('npm', ['test', '--prefix', 'apps/backend']);
+// Contact throttling must persist across instances; never deploy without storage.
+run('gcloud', ['firestore', 'databases', 'describe', '--database=(default)',
+  '--project=megvandeusen-website', '--account=keenanvandeusen@gmail.com', '--format=value(name)', '--quiet']);
 // Keep existing Cloud Run environment and pinned secret versions. Do not change recipients during code deploys.
 run('gcloud', [
   'run', 'deploy', 'website-backend', '--source=apps/backend', '--region=us-west1',

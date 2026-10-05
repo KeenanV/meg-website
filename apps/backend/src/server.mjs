@@ -1,6 +1,8 @@
 import { createServer } from 'node:http';
 import { GoogleAuth } from 'google-auth-library';
 import { createHandler } from './handler.mjs';
+import {Firestore} from '@google-cloud/firestore';
+import {contactProtection, firestoreAllowance} from './abuse.mjs';
 
 const config = {
   origins: (process.env.CONTACT_ORIGINS ?? '').split(',').map(value => value.trim()).filter(Boolean),
@@ -27,6 +29,8 @@ async function post(url, authorization, body, extraHeaders = {}) {
 
 const handler = createHandler({
   config,
+  // Never silently fall back to process-local counters in a cloud deployment.
+  protection: contactProtection(firestoreAllowance(new Firestore({projectId: config.project}), 'contact')),
   async assess(token, userAgent) {
     const accessToken = await auth.getAccessToken();
     const response = await post(

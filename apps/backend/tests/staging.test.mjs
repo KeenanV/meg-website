@@ -34,4 +34,9 @@ test('staging gate protects HTML, assets, API, and error routes on any hostname;
   assert.equal(resourceRequests, 1);
   assert.equal((await fetch(origin + '/.env', {headers})).status, 404);
   assert.equal((await fetch(origin + '/', {headers: {Authorization: 'Basic ' + Buffer.from('wrong:password').toString('base64')}})).status, 401);
+  let rejected;
+  for (let i = 0; i < 65; i++) rejected = await fetch(origin + '/');
+  assert.equal(rejected.status, 429);
+  // An attacker must not lock a reviewer with the correct credential out.
+  assert.equal((await fetch(origin + '/', {headers})).status, 200);
 });
