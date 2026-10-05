@@ -4,10 +4,18 @@
     "public": "apps/web/dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "trailingSlash": false,
+    "rewrites": [
+      { "source": "/api/resources/**", "run": { "serviceId": "website-backend", "region": "us-west1" } },
+      { "source": "/api/studio/uploads/**", "run": { "serviceId": "website-backend", "region": "us-west1" } }
+    ],
     "redirects": [
       { "regex": "^/share-stressed-in-the-us/?$", "destination": "/books", "type": 301 }
     ],
     "headers": [
+      {
+        "source": "/resources{,/**}",
+        "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+      },
       {
         "source": "**",
         "headers": [

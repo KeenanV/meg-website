@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
 import { isValidSignature, SIGNATURE_HEADER_NAME } from '@sanity/webhook';
+import {contactProtection, memoryAllowance, localBurst} from './abuse.mjs';
 
 const hash = value => createHash('sha256').update(value).digest('hex');
-const contentTypes = new Set(['siteSettings', 'about', 'linksPage', 'book', 'blogPost', 'newsItem']);
+const contentTypes = new Set(['siteSettings', 'about', 'linksPage', 'book', 'blogPost', 'newsItem', 'meditation']);
 const MAX_BODY = 32_768;
 
 // This bounded, process-local limit is a second layer behind reCAPTCHA, not a billing cap.
@@ -47,8 +48,10 @@ function contactData(value) {
   return clean;
 }
 
-export function createHandler({ config, assess, sendEmail, dispatch, now = Date.now, log = console.info }) {
+export function createHandler({ config, assess, sendEmail, dispatch, now = Date.now, log = console.info,
+  protection = contactProtection(memoryAllowance(now)) }) {
   const allow = limiter(now);
+  const requestBurst = localBurst(60, 60_000, now);
   const deliveries = new Map();
   const pending = new Map();
 
@@ -83,6 +86,10 @@ export function createHandler({ config, assess, sendEmail, dispatch, now = Date.
       return reply(405, 'Use POST.');
     }
     if (!/^application\/json(?:\s*;|$)/i.test(request.headers['content-type'] ?? '')) return reply(415, 'Use JSON.');
+    if (path === '/contact' && !requestBurst()) {
+      response.setHeader('Retry-After', '60');
+      return reply(429, 'Please wait a minute before trying again.');
+    }
 
     let raw;
     try { raw = await readBody(request); }
@@ -118,20 +125,27 @@ export function createHandler({ config, assess, sendEmail, dispatch, now = Date.
       }
 
       if (!config.resendKey || !config.recipient || !config.sender || !config.siteKey) return reply(503, 'Messaging is not available yet.');
-      if (!allow('requests', 60, 60_000)) return reply(429, 'Please wait a minute before trying again.');
       let data;
       try { data = JSON.parse(raw); } catch { return reply(400, 'Invalid JSON.'); }
       if (typeof data?.website === 'string' && data.website) return reply(200, 'Message received.');
       const contact = contactData(data);
       if (!contact) return reply(400, 'Please check your name, email address, and message.');
       if (!allow(`email:${hash(contact.email.toLowerCase())}`, 3, 600_000)
-        || !allow('assessments', 30, 3_600_000)) return reply(429, 'Please wait a little before sending another message.');
+        || !await protection.assessment()) {
+        response.setHeader('Retry-After', '3600');
+        return reply(429, 'Messaging is busy. Please try again later. Your message has not been sent.');
+      }
       const assessment = await assess(contact.token, request.headers['user-agent'] ?? '');
       if (assessment?.tokenProperties?.valid !== true
         || assessment.tokenProperties.action !== 'contact'
         || assessment.tokenProperties.hostname !== new URL(request.headers.origin).hostname
         || typeof assessment.riskAnalysis?.score !== 'number'
         || assessment.riskAnalysis.score < 0.5) return reply(403, 'The spam check could not verify this request. Please try again.');
+
+      if (!await protection.delivery(contact.email)) {
+        response.setHeader('Retry-After', '600');
+        return reply(429, 'Messaging is busy. Please try again later. Your message has not been sent.');
+      }
 
       const payload = {
         from: config.sender,

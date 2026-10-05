@@ -8,10 +8,17 @@
   "scripts": {
     "start": "node src/server.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/server.mjs && node --check src/handler.mjs"
+    "check": "node --check src/reader-protection.mjs && node --check src/service-handler.mjs && node --check src/production-gateway.mjs && node --check src/abuse.mjs && node --check src/client-identity.mjs && node --check src/handler.mjs && node --check src/private-catalog.mjs && node --check src/resources-cloud.mjs && node --check src/resources-local.mjs && node --check src/resources-state.mjs && node --check src/resources.mjs && node --check src/server.mjs && node --check src/staging-gateway.mjs && node --check src/staging-server.mjs && node --check src/studio-upload.mjs"
   },
   "dependencies": {
+    "@google-cloud/firestore": "9.3.1",
+    "@google-cloud/storage": "8.2.0",
     "@sanity/webhook": "4.0.4",
     "google-auth-library": "11.1.0"
+  },
+  "overrides": {
+    "gaxios@6.7.1": {
+      "uuid": "^11.1.1"
+    }
   }
 }

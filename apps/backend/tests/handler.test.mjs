@@ -114,11 +114,40 @@ test('upstream delivery failure does not expose provider response or private mes
   assert.doesNotMatch(await response.text() + logs.join(''), /secret-provider-response|reader@example.com|Hello/);
 });
 
+test('rotating email addresses cannot flood inbox, even with passing CAPTCHA', async t => {
+  const {post, emails} = await setup(t);
+  for (let i = 0; i < 20; i++) {
+    const response = await post({...message(), email: `bot${i}@example.com`});
+    assert.equal(response.status, i < 5 ? 200 : 429);
+  }
+  assert.equal(emails.length, 5);
+});
+
+test('shared limiter outage fails closed without sending or exposing errors', async t => {
+  const {post, emails, assessments} = await setup(t, {protection: {
+    assessment: async () => {throw new Error('private database details');},
+    delivery: async () => true,
+  }});
+  const response = await post(message());
+  assert.equal(response.status, 503);
+  assert.doesNotMatch(await response.text(), /database details/);
+  assert.equal(emails.length, 0);
+  assert.equal(assessments.length, 0);
+});
+
 test('signed create, update and delete trigger builds; duplicate body is deduplicated', async t => {
   const { hook, dispatches } = await setup(t);
   for (const operation of ['create', 'update', 'delete']) assert.equal((await hook(event({ operation }))).status, 202);
   assert.equal((await hook(event({ operation: 'delete' }))).status, 202);
   assert.equal(dispatches.length, 3);
+});
+
+test('published meditations trigger rebuilds, while drafts and asset events do not', async t => {
+  const {hook, dispatches} = await setup(t);
+  assert.equal((await hook(event({type: 'meditation', id: 'meditation-1'}))).status, 202);
+  assert.equal((await hook(event({type: 'meditation', id: 'drafts.meditation-1'}))).status, 400);
+  assert.equal((await hook(event({type: 'sanity.fileAsset', id: 'file-1'}))).status, 400);
+  assert.equal(dispatches.length, 1);
 });
 
 test('untrusted signature, changed payload, wrong project, and unpublished events are rejected', async t => {

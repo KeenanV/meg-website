@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createWebsiteConfig } from '../scripts/hosting-config.mjs';
@@ -7,14 +8,31 @@ import { createWebsiteConfig } from '../scripts/hosting-config.mjs';
 const require = createRequire(import.meta.url);
 const firebaseRequire = createRequire(require.resolve('firebase-tools/package.json'));
 
-test('release configuration defaults to preview and does not leak noindex into production', () => {
+test('staging has no public static upload path and routes every URL through its protected service', () => {
+  const {hosting} = JSON.parse(readFileSync(new URL('../firebase.staging.json', import.meta.url), 'utf8'));
+  assert.equal(hosting.site, 'megvandeusen-staging');
+  assert.equal(hosting.public, '.firebase/staging-empty');
+  assert.deepEqual(hosting.ignore, ['**/*']);
+  assert.deepEqual(hosting.rewrites, [{source: '**', run: {serviceId: 'staging-website', region: 'us-west1', pinTag: true}}]);
+  const headers = hosting.headers.find(rule => rule.source === '**').headers;
+  assert(headers.some(header => header.key === 'X-Robots-Tag' && header.value.includes('noindex')));
+  assert(headers.some(header => header.key === 'Cache-Control' && header.value === 'private, no-store'));
+});
+
+test('only Resources is noindex in production; all preview pages are noindex', () => {
   const preview = createWebsiteConfig();
   const live = createWebsiteConfig('live');
-  const robotsHeaders = config => config.hosting.headers.flatMap(rule => rule.headers)
+  const robotsHeaders = (config, source) => config.hosting.headers.filter(rule => rule.source === source).flatMap(rule => rule.headers)
     .filter(header => header.key.toLowerCase() === 'x-robots-tag');
-  assert.deepEqual(robotsHeaders(preview), [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }]);
-  assert.deepEqual(robotsHeaders(live), []);
+  assert.deepEqual(robotsHeaders(preview, '**'), [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }]);
+  assert.deepEqual(robotsHeaders(live, '**'), []);
+  assert.deepEqual(robotsHeaders(live, '/resources{,/**}'), [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }]);
+  const minimatch = firebaseRequire('minimatch');
+  for (const url of ['/resources', '/resources/', '/resources/index.html']) assert(minimatch(url, '/resources{,/**}'));
+  for (const url of ['/news', '/about', '/resources-extra']) assert(!minimatch(url, '/resources{,/**}'));
   assert.equal(live.hosting.site, 'megvandeusen-website');
+  assert.deepEqual(live.hosting.rewrites, ['/api/resources/**', '/api/studio/uploads/**'].map(source =>
+    ({source, run: {serviceId: 'website-backend', region: 'us-west1'}})));
   assert.equal(live.hosting.public, fileURLToPath(new URL('../apps/web/dist', import.meta.url)));
   assert.deepEqual(live.hosting.redirects, preview.hosting.redirects);
   assert.throws(() => createWebsiteConfig('production'), /must be preview or live/);
@@ -74,4 +92,24 @@ test('Firebase Pub/Sub dependency preserves trace propagation with patched OpenT
     tracing.setGloballyEnabled(false);
     api.trace.disable();
   }
+});
+
+test('release workflows select their environment, dataset and branch without overlapping deploys', () => {
+  const {parse} = require('yaml');
+  for (const [file, branch, environment, dataset] of [['deploy-staging.yml', 'staging', 'Staging', 'staging'], ['deploy.yml', 'master', 'Production', 'production']]) {
+    const workflow = parse(readFileSync(new URL('../.github/workflows/'+file, import.meta.url), 'utf8'));
+    assert.deepEqual(workflow.on.push.branches, [branch]);
+    assert.equal(workflow.jobs.deploy.if, `github.ref == 'refs/heads/${branch}'`);
+    assert.equal(workflow.jobs.deploy.environment.name, environment);
+    assert.equal(workflow.jobs.deploy.env.PUBLIC_SANITY_DATASET, dataset);
+    assert.equal(workflow.jobs.deploy.env.SANITY_STUDIO_DATASET, dataset);
+    assert.equal(workflow.concurrency['cancel-in-progress'], false);
+    const auth = workflow.jobs.deploy.steps.find(step => step.uses?.startsWith('google-github-actions/auth@'));
+    assert.equal(auth.with.project_id, dataset === 'staging' ? 'megvandeusen-staging' : 'megvandeusen-website');
+  }
+  const checks = parse(readFileSync(new URL('../.github/workflows/check.yml', import.meta.url), 'utf8'));
+  assert.deepEqual(checks.on.pull_request.branches, ['staging', 'master']);
+  assert.ok(checks.jobs.verify);
+  assert.ok(checks.jobs['release-source']);
+  assert.match(checks.jobs['release-source'].steps[0].run, /HEAD_REPO/);
 });
