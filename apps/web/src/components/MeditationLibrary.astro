@@ -1,0 +1,130 @@
+<div class="resources-library" data-meditation-library>
+  <section class="mt-6" aria-label="Guided recordings">
+    <div class="meditation-grid grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+      <template data-recording-template>
+        <article>
+          <h2 class="sr-only"></h2>
+          <button type="button" class="meditation-card" data-meditation-card data-liquid="true" disabled
+            aria-label="Play recording" aria-pressed="false">
+            <span class="meditation-glass glass-surface" aria-hidden="true"></span>
+            <span class="meditation-rotor">
+              <span class="meditation-face meditation-front" aria-hidden="false">
+                <span class="meditation-image">
+                  <img data-recording-image alt="" width="840" height="525" loading="lazy" decoding="async" class="aspect-[8/5] w-full object-cover" hidden />
+                  <span class="meditation-placeholder" data-recording-placeholder aria-hidden="true">✦</span>
+                </span>
+                <span class="meditation-front-copy">
+                  <span data-recording-label class="text-xs font-medium uppercase tracking-[0.16em] text-emerald-100 break-words"></span>
+                  <span class="meditation-title"></span>
+                  <span class="mt-auto pt-5 text-sm text-white/70">Take a moment <span aria-hidden="true">→</span></span>
+                </span>
+                <span class="meditation-shimmer" aria-hidden="true"></span>
+                <span class="card-play" aria-hidden="true">
+                  <span data-card-play-icon><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 4.5v15l12-7.5z" /></svg></span>
+                  <span data-card-pause-icon hidden><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zm8 0h4v16h-4z" /></svg></span>
+                </span>
+              </span>
+              <span class="meditation-face meditation-back" aria-hidden="true">
+                <span data-recording-label class="text-xs font-medium uppercase tracking-[0.16em] text-emerald-100 break-words"></span>
+                <span class="meditation-title"></span>
+                <span class="meditation-excerpt" ></span>
+                <span class="meditation-state" data-card-status>Ready to listen</span>
+                <span class="meditation-shimmer" aria-hidden="true"></span>
+                <span class="card-play" aria-hidden="true">
+                  <span data-card-play-icon><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 4.5v15l12-7.5z" /></svg></span>
+                  <span data-card-pause-icon hidden><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zm8 0h4v16h-4z" /></svg></span>
+                </span>
+              </span>
+            </span>
+          </button>
+        </article>
+      </template>
+    </div>
+    <div class="glass-surface p-8 text-white/80" data-recordings-empty hidden>
+      Guided recordings will be available here soon. Please check back for a quiet moment together.
+    </div>
+  </section>
+  <section class="meditation-player glass-surface" data-meditation-player aria-label="Audio player" hidden>
+    <audio preload="none" data-meditation-audio></audio>
+    <div class="player-track">
+      <img data-player-artwork alt="" width="56" height="56" hidden />
+      <div class="min-w-0">
+        <p class="player-title" data-player-title></p>
+        <p class="text-xs text-white/65">Meg Van Deusen</p>
+      </div>
+    </div>
+    <button type="button" class="player-toggle" data-player-toggle aria-label="Play recording">
+      <span data-play-icon><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 4.5v15l12-7.5z" /></svg></span>
+      <span data-pause-icon hidden><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4h4v16H6zm8 0h4v16h-4z" /></svg></span>
+    </button>
+    <div class="player-progress">
+      <span data-player-elapsed aria-hidden="true">0:00</span>
+      <input data-player-seek type="range" min="0" max="0" value="0" step="any" disabled
+        aria-label="Playback position" aria-valuetext="0:00" />
+      <span data-player-duration aria-hidden="true">0:00</span>
+    </div>
+    <button type="button" class="player-close" data-player-close aria-label="Close player and stop recording">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" /></svg>
+    </button>
+    <p class="player-status" role="status" aria-live="polite" data-player-status></p>
+  </section>
+</div>
+<style>
+  .resources-library { --player-height: 10rem; }
+  .resources-library[data-player-open] { padding-bottom: calc(var(--player-height) + 2rem); }
+  .meditation-grid > article { min-width: 0; display: flex; }
+  .meditation-card { position: relative; top: 0; width: 100%; text-align: left; border-radius: 1.5rem; transition: top 200ms; -webkit-tap-highlight-color: transparent; }
+  .meditation-card[data-liquid-active] { top: -2px; }
+  .meditation-glass { position: absolute; inset: 0; }
+  .meditation-card[data-liquid-active] .meditation-glass { box-shadow: inset 0 1px 0 #ffffff1a, 0 20px 25px -5px #0003; }
+  .meditation-card:disabled { cursor: default; }
+  .meditation-rotor { position: relative; display: grid; width: 100%; height: 100%; transform-style: preserve-3d; }
+  .meditation-rotor, .meditation-glass { transform: perspective(1200px) rotateY(0deg); transition: transform 650ms cubic-bezier(.2,.7,.2,1); }
+  .meditation-card[data-selected] .meditation-rotor, .meditation-card[data-selected] .meditation-glass { transform: perspective(1200px) rotateY(180deg); }
+  .meditation-face { position: relative; grid-area: 1 / 1; display: flex; flex-direction: column; min-width: 0; border-radius: 1.5rem; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  /* Sibling layers share one projection and timing. Keep perspective and hover
+     transforms off their parent so Firefox can sample the page behind the glass. */
+  .meditation-front { transform: rotateY(0deg); }
+  .meditation-back { padding: 1.5rem; transform: rotateY(180deg); }
+  .meditation-back > .meditation-title, .meditation-back > span:first-child { padding-right: 3rem; }
+  .meditation-image { display: block; aspect-ratio: 8 / 5; overflow: hidden; }
+  .meditation-placeholder { display: grid; height: 100%; place-items: center; font-size: 4rem; color: #b5dcd2; background: linear-gradient(135deg, #224c48, #152636); }
+  .meditation-front-copy { display: flex; flex: 1; flex-direction: column; padding: 1.5rem; }
+  .meditation-title { display: block; margin-top: .6rem; font-size: 1.25rem; font-weight: 600; line-height: 1.35; letter-spacing: -.025em; overflow-wrap: anywhere; }
+  .meditation-excerpt { display: block; margin-top: 1rem; font-size: .95rem; line-height: 1.7; color: rgba(255,255,255,.85); overflow-wrap: anywhere; white-space: pre-line; }
+  .meditation-state { display: block; margin-top: auto; padding-top: 1.25rem; color: #d1fae5; font-size: .8rem; }
+  .meditation-shimmer { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(300px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,.14), transparent 65%); transition: opacity 150ms; }
+  .meditation-card[data-liquid-active] .meditation-shimmer { opacity: 1; }
+  .card-play { position: absolute; top: 1rem; right: 1rem; display: grid; width: 3rem; height: 3rem; place-items: center; border-radius: 50%; color: white; background: #4169e1; box-shadow: 0 6px 24px #0005; opacity: 0; transform: translateX(1.5rem); transition: transform 250ms ease-out, opacity 150ms; pointer-events: none; }
+  .card-play svg { width: 1.5rem; height: 1.5rem; }
+  .meditation-card[data-liquid-active] .card-play, .meditation-card:focus-visible .card-play { opacity: 1; transform: translateX(0); }
+  .meditation-card[data-selected] .card-play { opacity: 1; transform: translateX(0); }
+  .meditation-player { position: fixed; z-index: 45; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); left: 1rem; right: 1rem; display: grid; grid-template-columns: minmax(0, 1fr) 3rem 2.75rem; align-items: center; gap: .5rem .65rem; padding: 1rem; background: rgba(10,19,27,.94); box-shadow: 0 12px 60px #0007, inset 0 1px 0 #ffffff20; animation: player-arrive 250ms ease-out; }
+  .player-track { display: flex; align-items: center; gap: .8rem; min-width: 0; }
+  .player-track img { flex-shrink: 0; width: 3rem; height: 3rem; border-radius: .6rem; object-fit: cover; }
+  .player-title { font-size: .9rem; font-weight: 600; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .player-toggle, .player-close { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 50%; transition: background 150ms, box-shadow 150ms; }
+  .player-toggle { background: #4169e1; color: white; }
+  .player-toggle svg { width: 1.3rem; height: 1.3rem; }
+  .player-close { color: #ffffffb3; }
+  .player-close svg { width: 1.25rem; height: 1.25rem; }
+  @media (hover: hover) { .player-toggle:hover { box-shadow: 0 0 18px #4169e180; } .player-close:hover { background: #ffffff14; } }
+  .player-progress { display: flex; grid-column: 1 / -1; grid-row: 2; align-items: center; gap: .65rem; min-width: 0; font-size: .7rem; font-variant-numeric: tabular-nums; color: #ffffffb3; }
+  .player-progress input { --played: 0%; flex: 1; min-width: 0; height: 2rem; margin: 0; cursor: pointer; appearance: none; -webkit-appearance: none; background: transparent; }
+  .player-progress input:disabled { cursor: default; opacity: .5; }
+  .player-progress input::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: linear-gradient(to right, #d1fae5 var(--played), #ffffff30 var(--played)); }
+  .player-progress input::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; height: 12px; width: 12px; margin-top: -4px; border-radius: 50%; background: #e0f2e9; }
+  .player-progress input::-moz-range-track { height: 4px; border-radius: 999px; background: #ffffff30; }
+  .player-progress input::-moz-range-progress { height: 4px; border-radius: 999px; background: #d1fae5; }
+  .player-progress input::-moz-range-thumb { border: 0; height: 12px; width: 12px; border-radius: 50%; background: #e0f2e9; }
+  .player-status { position: absolute; bottom: calc(100% + .5rem); left: 0; right: 0; padding: .65rem 1rem; border-radius: 1rem; background: #0a131bf2; font-size: .8rem; color: #d1fae5; }
+  .player-status:empty { display: none; }
+  @keyframes player-arrive { from { opacity: 0; transform: translateY(.75rem); } to { opacity: 1; transform: translateY(0); } }
+  @media (min-width: 768px) {
+    .meditation-player { left: calc(13rem + 1.5rem); right: 1.5rem; grid-template-columns: minmax(0, auto) 2.75rem minmax(8rem, 1fr) 2.75rem; gap: 1rem; padding: 1rem 1.25rem; }
+    .player-track { max-width: 15rem; }
+    .player-progress { grid-column: auto; grid-row: auto; }
+  }
+  @media (hover: none), (pointer: coarse) { .card-play { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .meditation-rotor, .meditation-glass, .meditation-card { transition: none; } .meditation-card[data-liquid-active] { top: 0; } }
+</style>

@@ -33,3 +33,9 @@ ui-debug.log*
 
 # Short-lived GitHub Actions credentials (never include in deployment artifacts)
 gha-creds-*.json
+
+# Local protected resources and password hashes; never ship as public assets
+.private/
+
+# Local planning notes are not intended for the public repository
+*.local.md

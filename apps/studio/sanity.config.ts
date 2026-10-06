@@ -4,12 +4,14 @@ import {visionTool} from '@sanity/vision';
 import { schemaTypes } from './schemas';
 import { structure } from './structure';
 const SINGLETON_TYPES = new Set(['siteSettings', 'about', 'linksPage'])
+const dataset = process.env.SANITY_STUDIO_DATASET || 'production';
+if (!['production', 'staging'].includes(dataset)) throw new Error('Unknown Studio dataset');
 
 export default defineConfig({
   name: 'default',
-  title: "Meg's Studio",
+  title: dataset === 'staging' ? "Meg's Studio — STAGING" : "Meg's Studio",
   projectId: 'ap0mc9ri',
-  dataset: 'production',
+  dataset,
   plugins: [
     structureTool({ structure }),       // <— this renders the editor UI
     visionTool()      // handy GROQ playground (optional)

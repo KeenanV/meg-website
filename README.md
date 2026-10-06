@@ -120,3 +120,16 @@ The viewer keeps at most five recently opened articles as HTML and metadata, rel
 No placeholder production domain is emitted. When a domain is chosen, provide `SITE_URL` to the build process to enable canonical URLs, then finish sitemap, sharing imagery, hosting headers, and redirects as part of launch preparation.
 
 [PROJECT_REVIEW.md](PROJECT_REVIEW.md) is the original assessment before hardening; [HARDENING.md](HARDENING.md) describes this pass.
+
+## Protected recording resources
+
+`/resources` is unlisted and excluded from indexing. It now serves a glass password
+gate and loads recording content only after server authentication. Local audio and
+images live outside public assets; requests require an authenticated session,
+including byte-range seeking. See [RESOURCES_AUTH.md](RESOURCES_AUTH.md) for the
+local demo setup, the protected staging preview, and required production rollout.
+
+Studio's **Resources** documents still manage title, recording type, picture,
+excerpt and MP3. The current Sanity uploader is public; cloud-private uploads and
+retirement of the existing public copies are a separate migration described in the
+handoff. Do not deploy the gated page to production before its backend is ready.

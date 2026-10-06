@@ -1,0 +1,20 @@
+name: Set up project
+description: Install the locked Node dependencies for all applications.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: 24
+        cache: npm
+        cache-dependency-path: |
+          package-lock.json
+          apps/web/package-lock.json
+          apps/studio/package-lock.json
+          apps/backend/package-lock.json
+    - shell: bash
+      run: |
+        npm ci
+        npm ci --prefix apps/web
+        npm ci --prefix apps/studio
+        npm ci --prefix apps/backend

@@ -13,7 +13,8 @@
     "test:hosting": "node --test tests/hosting.test.mjs",
     "hosting:preview": "node scripts/preview-hosting.mjs",
     "hosting:local": "firebase emulators:start --only hosting --project megvandeusen-website",
-    "check:redirects": "node --test tests/redirects.test.mjs"
+    "check:redirects": "node --test tests/redirects.test.mjs",
+    "resources:prepare": "node scripts/prepare-local-resources.mjs"
   },
   "engines": {
     "node": ">=24 <25"

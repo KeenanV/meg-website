@@ -1,22 +1,4 @@
-export {};
-type Captcha = { enterprise: { ready: (callback: () => void) => void; execute: (key: string, options: { action: string }) => Promise<string> } };
-declare global { interface Window { grecaptcha?: Captcha } }
-
-let captchaLoading: Promise<void> | undefined;
-function loadCaptcha(key: string): Promise<void> {
-  if (window.grecaptcha?.enterprise) return Promise.resolve();
-  if (captchaLoading) return captchaLoading;
-  captchaLoading = new Promise<void>((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = `https://www.google.com/recaptcha/enterprise.js?render=${encodeURIComponent(key)}`;
-    script.async = true;
-    const timer = window.setTimeout(() => { script.remove(); reject(new Error('Spam check timed out. Please try again.')); }, 15_000);
-    script.onload = () => { clearTimeout(timer); resolve(); };
-    script.onerror = () => { clearTimeout(timer); script.remove(); reject(new Error('The spam check could not load. Please try again.')); };
-    document.head.append(script);
-  }).catch(error => { captchaLoading = undefined; throw error; });
-  return captchaLoading;
-}
+import {captchaToken} from './captcha';
 
 function initialize() {
   const form = document.querySelector<HTMLFormElement>('#contact-form');
@@ -44,14 +26,7 @@ function initialize() {
     form.setAttribute('aria-busy', 'true');
     status.textContent = 'Sending your message…';
     try {
-      await loadCaptcha(siteKey);
-      const captcha = window.grecaptcha!;
-      const token = await Promise.race([
-        new Promise<string>((resolve, reject) => captcha.enterprise.ready(() => {
-          captcha.enterprise.execute(siteKey, { action: 'contact' }).then(resolve, reject);
-        })),
-        new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('The spam check timed out. Please try again.')), 15_000)),
-      ]);
+      const token = await captchaToken(siteKey, 'contact');
       const response = await fetch(endpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...data, token, requestId }), signal: AbortSignal.timeout(35_000),
