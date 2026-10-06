@@ -4,10 +4,11 @@ import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
 process.chdir(root);
-if (!process.argv.includes('--prepared')) run(process.execPath, ['scripts/prepare-staging-build.mjs']);
+if (!process.argv.includes('--prepared')) run(process.execPath, ['scripts/prepare-staging-build.mjs',
+  ...(process.argv.includes('--built') ? ['--built'] : [])]);
 const context = (await readFile('.private/staging-build-path.txt', 'utf8')).trim();
 if (!context.startsWith(path.join(root, '.private/staging-build-'))) throw new Error('Invalid staging context');
-run('npm', ['test', '--prefix', 'apps/backend']);
+if (!process.argv.includes('--verified')) run('npm', ['test', '--prefix', 'apps/backend']);
 run(gcloud, ['run', 'deploy', 'staging-website', '--source='+context, '--region=us-west1',
   '--project=megvandeusen-staging', ...accountFlags,
   '--service-account=staging-website@megvandeusen-staging.iam.gserviceaccount.com',

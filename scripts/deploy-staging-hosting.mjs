@@ -1,14 +1,10 @@
 import {readFile} from 'node:fs/promises';
-import {createRequire} from 'node:module';
 import {accountFlags, gcloud, run} from './cloud-cli.mjs';
 
-const require = createRequire(new URL('../apps/backend/package.json', import.meta.url));
-const {GoogleAuth} = require('google-auth-library');
 const project = 'megvandeusen-staging';
 const flags = ['--project='+project, '--region=us-west1', ...accountFlags];
-const token = process.env.CI
-  ? await new GoogleAuth({scopes: ['https://www.googleapis.com/auth/cloud-platform']}).getAccessToken()
-  : run(gcloud, ['auth', 'print-access-token', ...accountFlags], {stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8'}).trim();
+const token = run(gcloud, ['auth', 'print-access-token', ...accountFlags],
+  {stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8'}).trim();
 async function request(method, route, body) {
   const response = await fetch('https://firebasehosting.googleapis.com/v1beta1/'+route, {
     method, headers: {Authorization: 'Bearer '+token, 'x-goog-user-project': project, 'Content-Type': 'application/json'},

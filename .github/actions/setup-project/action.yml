@@ -1,5 +1,9 @@
 name: Set up project
 description: Install the locked Node dependencies for all applications.
+inputs:
+  content-only:
+    description: Install only dependencies needed to build and publish website content.
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -16,5 +20,8 @@ runs:
       run: |
         npm ci
         npm ci --prefix apps/web
+    - if: inputs.content-only != 'true'
+      shell: bash
+      run: |
         npm ci --prefix apps/studio
         npm ci --prefix apps/backend
