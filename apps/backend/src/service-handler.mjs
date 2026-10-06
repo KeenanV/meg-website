@@ -59,7 +59,7 @@ export function createServiceHandler(env = process.env) {
     },
     async dispatch() {
       await post(`https://api.github.com/repos/KeenanV/meg-website/actions/workflows/${target.workflow}/dispatches`,
-        `Bearer ${config.githubToken}`, { ref: target.branch }, {
+        `Bearer ${config.githubToken}`, { ref: target.branch, inputs: {deployment_type: 'content'} }, {
           Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',
           'User-Agent': 'meg-website-publishing',
         });

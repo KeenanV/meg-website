@@ -1,9 +1,16 @@
 name: Deploy production
+run-name: ${{ github.event_name == 'workflow_dispatch' && inputs.deployment_type == 'content' && 'Publish Sanity content — production' || 'Deploy code — production' }}
 
 on:
   push:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      deployment_type:
+        description: Content publishing skips unchanged Studio and backend deployments.
+        type: choice
+        options: [full, content]
+        default: full
 
 permissions:
   contents: read
@@ -23,6 +30,7 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: read
+      actions: read
       id-token: write
     env:
       PUBLIC_SANITY_PROJECT_ID: ap0mc9ri
@@ -38,20 +46,38 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Select safe publishing path
+        id: publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_DEPLOYMENT: ${{ inputs.deployment_type || 'full' }}
+          DEPLOYMENT_WORKFLOW: deploy.yml
+        run: node scripts/publishing-mode.mjs
       - uses: ./.github/actions/setup-project
-      - run: npm run verify
+        with:
+          content-only: ${{ steps.publishing.outputs.mode == 'content' }}
+      - if: steps.publishing.outputs.mode == 'full'
+        run: npm run verify
+      - if: steps.publishing.outputs.mode == 'content'
+        run: npm run verify:content
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           project_id: megvandeusen-website
           workload_identity_provider: projects/348807509213/locations/global/workloadIdentityPools/github/providers/meg-website
           service_account: github-hosting@megvandeusen-website.iam.gserviceaccount.com
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        if: steps.publishing.outputs.mode == 'full'
       - name: Deploy contact and publishing backend
+        if: steps.publishing.outputs.mode == 'full'
         run: node scripts/deploy-backend.mjs
       - name: Deploy production Studio
+        if: steps.publishing.outputs.mode == 'full'
         working-directory: apps/studio
         env:
           SANITY_AUTH_TOKEN: ${{ secrets.SANITY_DEPLOY_TOKEN }}
         run: npx --no-install sanity deploy --yes --schema-required
       - name: Deploy checked output to the configured channel
         run: node scripts/deploy-hosting.mjs
+      - name: Full deployment completed
+        if: steps.publishing.outputs.mode == 'full'
+        run: echo 'Full production code deployment completed.'

@@ -7,7 +7,9 @@ process.chdir(root);
 const environment = {...process.env, SITE_URL: 'https://staging.megvandeusen.com', PUBLIC_SITE_ENV: 'staging',
   PUBLIC_SANITY_PROJECT_ID: 'ap0mc9ri', PUBLIC_SANITY_DATASET: 'staging',
   PUBLIC_CONTACT_API_URL: '/contact', PUBLIC_RECAPTCHA_SITE_KEY: process.env.PUBLIC_RECAPTCHA_SITE_KEY || ''};
-for (const args of [['run', 'build', '--prefix', 'apps/web'], ['run', 'check:build', '--prefix', 'apps/web']]) {
+const commands = process.argv.includes('--built') ? [] : [['run', 'build', '--prefix', 'apps/web']];
+commands.push(['run', 'check:build', '--prefix', 'apps/web']);
+for (const args of commands) {
   const result = spawnSync('npm', args, {env: environment, stdio: 'inherit'});
   if (result.status !== 0) process.exit(result.status || 1);
 }

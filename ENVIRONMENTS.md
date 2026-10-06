@@ -35,6 +35,30 @@ an incoming webhook cannot choose a branch, workflow, repository or cloud projec
 
 ## Content publishing
 
+Sanity dispatches the matching deployment workflow with `deployment_type: content`.
+These runs are labeled **Publish Sanity content — production/staging** in Actions.
+Branch merges and manual runs default to `full`, labeled **Deploy code**. Keeping
+both paths in the same workflow preserves the existing environment approvals,
+workload identities, and shared deployment concurrency group.
+
+The content path installs only website/Hosting dependencies and validates and
+builds the website, including local links and redirects. It skips Studio and
+backend checks already completed for the deployed code. Production publishes only
+Firebase Hosting; it does not redeploy Cloud Run or Studio. Staging still replaces
+its authenticated Cloud Run bundle because that bundle contains the generated
+pages, but skips Studio and avoids building the website twice. It continues to
+check the live staging gate and reader CAPTCHA after publishing.
+
+The shortcut requires evidence of a successful full deployment of the **exact
+commit and branch**. A content run with new or unverified code performs a full
+deployment instead. This also handles a content dispatch replacing a pending code
+run in GitHub's concurrency queue. History API errors stop publishing; missing or
+expired history conservatively selects a full deployment.
+
+All static pages are rebuilt together. A post's current slug is queried again for
+the homepage and article lists, keeping generated links consistent after release.
+Renaming a slug does not automatically create a redirect from its previous URL.
+
 The existing production webhook still targets the production backend. A second
 signed webhook, restricted to the staging dataset, targets the staging backend.
 It uses a separate signing secret and dispatches `deploy-staging.yml` on staging.
