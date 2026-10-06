@@ -1,10 +1,11 @@
 import {fileURLToPath} from 'node:url';
 import {networkInterfaces} from 'node:os';
-import {localResources} from '../../backend/src/resources-local.mjs';
 
 export default function resourcesLocal() {
   return {name: 'resources-local', hooks: {
     'astro:server:setup': async ({server}) => {
+      // Static builds and checks do not install or run the local backend.
+      const {localResources} = await import('../../backend/src/resources-local.mjs');
       const hosts = new Set(['localhost', '127.0.0.1', '[::1]', ...Object.values(networkInterfaces()).flat().filter(Boolean).map(item => item.address)]);
       const handler = await localResources(fileURLToPath(new URL('../../../.private/resources/', import.meta.url)), origin => {
         try {
