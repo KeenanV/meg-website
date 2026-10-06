@@ -104,6 +104,20 @@ test('release workflows select their environment, dataset and branch without ove
     assert.equal(workflow.jobs.deploy.env.PUBLIC_SANITY_DATASET, dataset);
     assert.equal(workflow.jobs.deploy.env.SANITY_STUDIO_DATASET, dataset);
     assert.equal(workflow.concurrency['cancel-in-progress'], false);
+    assert.equal(workflow.on.workflow_dispatch.inputs.deployment_type.default, 'full');
+    assert.deepEqual(workflow.on.workflow_dispatch.inputs.deployment_type.options, ['full', 'content']);
+    assert.equal(workflow.jobs.deploy.permissions.actions, 'read');
+    const steps = workflow.jobs.deploy.steps;
+    const fullOnly = "steps.publishing.outputs.mode == 'full'";
+    assert.equal(steps.find(step => step.name === `Deploy ${dataset} Studio`).if, fullOnly);
+    assert.equal(steps.find(step => step.name === 'Full deployment completed').if, fullOnly);
+    assert.equal(steps.at(-1).name, 'Full deployment completed');
+    assert.equal(steps.find(step => step.run === 'npm run verify:content').if, "steps.publishing.outputs.mode == 'content'");
+    if (dataset === 'production') assert.equal(steps.find(step => step.name === 'Deploy contact and publishing backend').if, fullOnly);
+    else {
+      assert.equal(workflow.jobs.deploy.env.PUBLIC_SITE_ENV, 'staging');
+      assert.ok(steps.find(step => step.run === 'node scripts/check-staging.mjs'));
+    }
     const auth = workflow.jobs.deploy.steps.find(step => step.uses?.startsWith('google-github-actions/auth@'));
     assert.equal(auth.with.project_id, dataset === 'staging' ? 'megvandeusen-staging' : 'megvandeusen-website');
   }
