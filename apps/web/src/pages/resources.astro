@@ -29,7 +29,7 @@ const siteKey = import.meta.env.DEV ? undefined : import.meta.env.PUBLIC_RECAPTC
           <button type="submit" class="unlock-button" data-liquid="true">Unlock resources <span aria-hidden="true">→</span></button>
         </form>
         <p id="resources-status" role="status" aria-live="polite" class="access-status" data-resources-status></p>
-        {siteKey && <p class="text-xs text-white/60">Protected by reCAPTCHA. Google’s <a href="https://policies.google.com/privacy" class="underline">Privacy Policy</a> and <a href="https://policies.google.com/terms" class="underline">Terms of Service</a> apply.</p>}
+        {siteKey && <p class="text-xs text-white/60">This site is protected by reCAPTCHA.</p>}
         <noscript><p class="mt-4">Please enable JavaScript to securely unlock and play the recordings.</p></noscript>
       </section>
     </div>
@@ -42,6 +42,9 @@ const siteKey = import.meta.env.DEV ? undefined : import.meta.env.PUBLIC_RECAPTC
 </Layout>
 <script>import '../scripts/resources-access';</script>
 <style>
+  /* Google permits hiding the floating badge when the login shows the notice above.
+     The badge is injected outside Astro's scoped markup; keep this rule global. */
+  :global(.grecaptcha-badge) { visibility: hidden; }
   .resources-gate { display: grid; place-items: center; min-height: 58vh; padding: 2rem 0; }
   .unlock-panel { width: min(100%, 30rem); padding: clamp(1.5rem, 4vw, 2.5rem); backdrop-filter: blur(28px) saturate(130%); }
   .lock-icon { width: 2rem; height: 2rem; margin-bottom: 1.5rem; color: #d1fae5; }
