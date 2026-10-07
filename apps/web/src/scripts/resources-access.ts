@@ -17,6 +17,10 @@ function setupAccess(root: HTMLElement) {
   const status = root.querySelector<HTMLElement>('[data-resources-status]')!;
   const logout = root.querySelector<HTMLButtonElement>('[data-resources-logout]')!;
   const logoutLabel = logout.querySelector<HTMLElement>('[data-lock-label]')!;
+  const lockStatus = root.querySelector<HTMLElement>('[data-lock-status]')!;
+  const padlock = logout.querySelector<SVGElement>('[data-padlock]')!;
+  const shackle = logout.querySelector<SVGElement>('[data-padlock-shackle]')!;
+  let lockAnimations: Animation[] = [];
   let cleanup: (() => void) | undefined;
   let expiry: ReturnType<typeof setTimeout> | undefined;
   let generation = 0;
@@ -31,7 +35,9 @@ function setupAccess(root: HTMLElement) {
     clearTimeout(expiry); cleanup?.(); cleanup = undefined;
     mount.querySelectorAll<HTMLElement>('[data-liquid]').forEach(unbindLiquidInteraction);
     mount.replaceChildren(); content.hidden = true; gate.hidden = false; status.textContent = message;
-    logout.hidden = true; logoutLabel.textContent = 'Lock resources';
+    lockAnimations.forEach(animation => animation.cancel()); lockAnimations = [];
+    logout.hidden = true; logout.disabled = false; logoutLabel.textContent = 'Lock resources';
+    lockStatus.textContent = ''; content.inert = false;
     password.value = '';
     if (focus) password.focus({preventScroll: true});
   }
@@ -91,13 +97,39 @@ function setupAccess(root: HTMLElement) {
     finally { submit.disabled = false; }
   });
   logout.addEventListener('click', async () => {
+    const current = generation;
+    let revoked = false;
     logout.disabled = true;
+    logoutLabel.textContent = 'Locking resources'; lockStatus.textContent = '';
+    content.inert = true;
     try {
       const response = await api('logout', {});
-      if (!response.ok) { logoutLabel.textContent = 'Could not lock — try again'; return; }
-      lock('Resources are locked.', true);
-    } catch { logoutLabel.textContent = 'Could not lock — try again'; }
-    finally { logout.disabled = false; }
+      if (current !== generation) return;
+      if (!response.ok) {
+        lockStatus.textContent = 'Could not lock resources. Please try again.';
+        return;
+      }
+      revoked = true;
+      cleanup?.(); cleanup = undefined;
+      // The session is already revoked; only the visual return waits for the lock.
+      if (!motion.matches) {
+        lockAnimations = [
+          shackle.animate([{transform: 'translateY(-4px)'}, {transform: 'translateY(1px)', offset: .8}, {transform: 'translateY(0)'}],
+            {duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards'}),
+          padlock.animate([{transform: 'translateY(0)'}, {transform: 'translateY(2px)', offset: .3}, {transform: 'translateY(0)'}],
+            {delay: 330, duration: 260, easing: 'ease-out', fill: 'forwards'}),
+        ];
+        await Promise.all(lockAnimations.map(animation => animation.finished.catch(() => {})));
+      }
+      if (current === generation) lock('Resources are locked.', true);
+    } catch {
+      if (current === generation) {
+        if (revoked) lock('Resources are locked.', true);
+        else lockStatus.textContent = 'Could not lock resources. Please try again.';
+      }
+    } finally {
+      if (current === generation) { logout.disabled = false; logoutLabel.textContent = 'Lock resources'; content.inert = false; }
+    }
   });
   // Never restore protected DOM from the back/forward cache without rechecking the server.
   window.addEventListener('pagehide', () => lock());
