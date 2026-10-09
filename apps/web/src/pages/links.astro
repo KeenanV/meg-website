@@ -19,9 +19,9 @@ const links = (page?.links ?? []).filter(link => link.label?.trim());
   <div class="links-page mx-auto max-w-xl">
     <StaticGlassCard class="links-pane p-5 sm:p-8">
       <header class="relative text-center">
-        {portrait && <div class="mx-auto w-24 sm:w-28">
-          <SanityImage image={portrait} alt={portrait.alt || name} width={336} height={504}
-            sizes="(min-width: 640px) 112px, 96px" priority
+        {portrait && <div class="mx-auto w-48 max-w-full sm:w-56">
+          <SanityImage image={portrait} alt={portrait.alt || name} width={672} height={1008}
+            sizes="(min-width: 640px) 224px, 192px" priority
             class="h-auto w-full rounded-2xl border border-white/25 shadow-xl" />
         </div>}
         <h1 class="links-name mt-5 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">{name}</h1>
@@ -46,7 +46,12 @@ const links = (page?.links ?? []).filter(link => link.label?.trim());
   </div>
 </Layout>
 <style>
-  .links-page :global(.links-pane) { background: linear-gradient(145deg, rgb(10 22 29 / .76), rgb(14 29 42 / .57)); }
+  .links-page :global(.links-pane) {
+    background: linear-gradient(145deg, rgb(10 22 29 / .76), rgb(14 29 42 / .57));
+    /* Clip the rounded pane without making it a nested scroll container.
+       Mobile browser controls should follow scrolling of the document. */
+    overflow: clip;
+  }
   .links-page { container-type: inline-size; }
   .links-name { font-size: clamp(1.4rem, 6.5cqi, 2.25rem); }
 </style>
