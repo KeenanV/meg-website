@@ -3,7 +3,7 @@ import Layout from "../layouts/Layout.astro";
 import { sanity } from "../lib/sanity";
 import { qHome } from "../lib/queries";
 import { hasValidSlug, type Article, type About } from "../lib/content";
-import { formatDate } from "../lib/dates";
+import HomeArticleCard from "../components/HomeArticleCard.astro";
 
 import GlassCard from "../components/GlassCard.astro";
 import GlassButton from "../components/GlassButton.astro";
@@ -87,22 +87,7 @@ const latestNews = content.news.filter(hasValidSlug);
 
     <div class="mt-5 grid gap-4">
       {!latestPosts.length && <p class="glass-surface p-6 text-white/80">Writing will be shared here soon.</p>}
-      {latestPosts.map((p) => (
-          <GlassCard href={`/blog/${p.slug}`} class="bg-gradient-to-br from-black/20 via-black/15 to-black/10 hover:shadow-blue-500/10">
-            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div class="min-w-0">
-                <div class="truncate text-lg font-semibold">{p.title}</div>
-                {p.excerpt && <p class="mt-1 text-sm text-white/65">{p.excerpt}</p>}
-              </div>
-
-              {p.publishedAt && (
-                  <div class="text-xs text-white/50">
-                    {formatDate(p.publishedAt)}
-                  </div>
-              )}
-            </div>
-          </GlassCard>
-      ))}
+      {latestPosts.map((entry) => <HomeArticleCard entry={entry} section="blog" />)}
     </div>
   </section>
 
@@ -116,21 +101,7 @@ const latestNews = content.news.filter(hasValidSlug);
 
     <div class="mt-5 grid gap-4">
       {!latestNews.length && <p class="glass-surface p-6 text-white/80">Updates will be shared here soon.</p>}
-      {latestNews.map((n) => (
-          <GlassCard href={`/news/${n.slug}`} class="bg-gradient-to-br from-black/20 via-black/15 to-black/10">
-            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div class="min-w-0">
-                <div class="truncate text-lg font-semibold">{n.title}</div>
-              </div>
-
-              {n.date && (
-                  <div class="text-xs text-white/50">
-                    {formatDate(n.date)}
-                  </div>
-              )}
-            </div>
-          </GlassCard>
-      ))}
+      {latestNews.map((entry) => <HomeArticleCard entry={entry} section="news" />)}
     </div>
   </section>
 </Layout>
