@@ -36,6 +36,10 @@ const isStaging = import.meta.env.PUBLIC_SITE_ENV === 'staging';
 <html lang="en" data-scene-aspect={source.width / source.height} style={`--scene-image: url("${images[2].src}")`}>
   <head>
     <meta charset="utf-8" />
+    <!-- Declare the existing dark design before styles load. Firefox iOS also
+         uses Dark Reader for Website Dark Mode and honors its opt-out. -->
+    <meta name="color-scheme" content="dark" />
+    <meta name="darkreader-lock" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={pageDescription} />
     <meta name="theme-color" content="#101b22" />
