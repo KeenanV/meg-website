@@ -1,0 +1,35 @@
+---
+import GlassCard from './GlassCard.astro';
+import SanityImage from './SanityImage.astro';
+import { formatDate } from '../lib/dates';
+import type { Article } from '../lib/content';
+
+interface Props { entry: Article; section: 'blog' | 'news' }
+const { entry, section } = Astro.props;
+const date = entry.publishedAt || entry.date;
+---
+<GlassCard href={`/${section}/${entry.slug}`} class="bg-gradient-to-br from-black/20 via-black/15 to-black/10 hover:shadow-blue-500/10">
+  <div class:list={['home-article', entry.cover?.asset?._ref && 'has-thumbnail']}>
+    {entry.cover?.asset?._ref && <div class="thumbnail">
+      <SanityImage image={entry.cover} alt={entry.cover.alt || ''} width={480} height={480}
+        sizes="(min-width: 768px) 160px, 96px" class="h-full w-full object-cover" />
+    </div>}
+    <div class="article-summary">
+      <h3 class="text-lg font-semibold leading-snug">{entry.title}</h3>
+      {date && <time datetime={date} class="mt-2 text-xs text-white/60">{formatDate(date)}</time>}
+      {entry.excerpt && <p class="mt-3 hidden text-sm leading-relaxed text-white/70 md:line-clamp-3">{entry.excerpt}</p>}
+      <span class="read-more text-sm font-medium text-emerald-100">Read more <span aria-hidden="true">→</span></span>
+    </div>
+  </div>
+</GlassCard>
+<style>
+  .home-article { display: grid; min-height: 8rem; gap: 1rem; }
+  .has-thumbnail { grid-template-columns: 96px minmax(0, 1fr); }
+  .thumbnail { overflow: hidden; border-radius: .85rem; min-height: 96px; }
+  .article-summary { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+  .read-more { align-self: flex-end; margin-top: auto; padding-top: 1rem; }
+  @media (min-width: 768px) {
+    .home-article { min-height: 10rem; gap: 1.5rem; }
+    .has-thumbnail { grid-template-columns: 160px minmax(0, 1fr); }
+  }
+</style>
