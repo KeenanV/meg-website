@@ -15,7 +15,8 @@
   [data-liquid] { --mx: 50%; --my: 50%; }
   [data-liquid] > .pointer-events-none { transition-duration: 150ms; }
   [data-liquid-active="true"] > .liquid-highlight { opacity: 1; }
-  html { color-scheme: dark; scrollbar-gutter: stable; background-color: #09090b; }
+  /* Keep native controls dark and opt out of browser auto-recoloring. */
+  html { color-scheme: only dark; scrollbar-gutter: stable; background-color: #09090b; }
   body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; }
   :focus-visible { outline: 2px solid #a7f3d0; outline-offset: 5px; }
   html[data-input-method="pointer"] :is(a, button, summary):focus-visible { outline: none; }
