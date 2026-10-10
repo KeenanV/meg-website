@@ -31,6 +31,7 @@ const images = await Promise.all([768, 1280, 1920].map(width =>
 ));
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefined;
 const isStaging = import.meta.env.PUBLIC_SITE_ENV === 'staging';
+const isPreview = import.meta.env.EDITORIAL_PREVIEW;
 ---
 <!doctype html>
 <html lang="en" data-scene-aspect={source.width / source.height} style={`--scene-image: url("${images[2].src}")`}>
@@ -46,7 +47,7 @@ const isStaging = import.meta.env.PUBLIC_SITE_ENV === 'staging';
     <title>{pageTitle}</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     {canonical && <link rel="canonical" href={canonical} />}
-    {(noindex || isStaging) && <meta name="robots" content="noindex" />}
+    {(noindex || isStaging || isPreview) && <meta name="robots" content="noindex" />}
     <meta property="og:title" content={pageTitle} />
     <meta property="og:site_name" content={siteTitle} />
     <meta property="og:description" content={pageDescription} />
@@ -68,10 +69,32 @@ const isStaging = import.meta.env.PUBLIC_SITE_ENV === 'staging';
     </div>
     {navigation && <><MobileNav socials={settings?.socials ?? []} /><SideNav socials={settings?.socials ?? []} /></>}
     <main id="main-content" tabindex="-1" class:list={['min-h-screen px-5 py-8 md:px-10 md:py-12', { 'md:ml-52': navigation }]}>
+      {isPreview && <aside data-editorial-preview class="mx-auto mb-5 max-w-6xl rounded-xl border border-amber-200/30 bg-slate-950/80 px-4 py-2 text-sm text-amber-100">Private draft preview · Changes here are not published. <a href="/api/preview/disable" class="underline">Exit preview</a></aside>}
       {isStaging && <p class="mx-auto mb-5 max-w-6xl rounded-xl border border-amber-200/30 bg-slate-950/80 px-4 py-2 text-sm text-amber-100">Staging · Private test environment</p>}
       <div class:list={['mx-auto', widths[contentWidth]]}><slot /></div>
     </main>
     <script>
+      if (import.meta.env.EDITORIAL_PREVIEW) {
+        import('@sanity/visual-editing').then(({enableVisualEditing}) => enableVisualEditing({
+          history: {
+            subscribe: (navigate) => {
+              const report = () => navigate({type: 'replace', url: location.pathname + location.search});
+              report();
+              window.addEventListener('popstate', report);
+              return () => window.removeEventListener('popstate', report);
+            },
+            update: (update) => {
+              if (update.type === 'pop') { window.history.back(); return; }
+              const next = new URL(update.url, location.origin);
+              if (next.origin !== location.origin || next.pathname.startsWith('/api/')) return;
+              if (next.href === location.href) return;
+              if (update.type === 'replace') location.replace(next.href);
+              else location.assign(next.href);
+            },
+          },
+          refresh: () => { window.location.reload(); return Promise.resolve(); },
+        }));
+      }
       import '../scripts/mobile-scene';
       import '../scripts/input-method';
       import { bindLiquidInteraction } from '../scripts/liquid-interaction';

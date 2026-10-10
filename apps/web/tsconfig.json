@@ -1,5 +1,6 @@
 {
   "extends": "astro/tsconfigs/strict",
+  "exclude": ["dist", "dist-preview", "node_modules"],
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "Bundler",

@@ -14,9 +14,11 @@ test('staging gate protects HTML, assets, API, and error routes on any hostname;
   await writeFile(path.join(directory, '404.html'), 'PRIVATE 404');
   let resourceRequests = 0;
   let publishingRequests = 0;
+  let maintenance = false;
   const credential = 'reviewer:test-fixture';
   const basicHash = createHash('sha256').update(credential).digest('hex');
   const server = createServer(stagingGateway({directory, basicHash,
+    maintenance: async () => maintenance,
     publishing: async (_req, res) => {publishingRequests++; res.writeHead(401); res.end('Independent service authentication');},
     resources: async (_req, res) => {resourceRequests++; res.writeHead(401); res.end('Book password still required');}}));
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -41,6 +43,14 @@ test('staging gate protects HTML, assets, API, and error routes on any hostname;
   assert.equal(await (await fetch(origin + '/app.js', {headers})).text(), 'PRIVATE SCRIPT');
   assert.equal((await fetch(origin + '/api/resources/catalog', {headers})).status, 401);
   assert.equal(resourceRequests, 1);
+  maintenance = true;
+  for (const route of ['/', '/app.js', '/api/resources/catalog']) {
+    assert.equal((await fetch(origin + route, {headers})).status, 503);
+  }
+  assert.equal(resourceRequests, 1, 'maintenance must protect the dynamic catalog too');
+  assert.equal((await fetch(origin + '/sanity-hook', {method: 'POST'})).status, 401);
+  assert.equal(publishingRequests, 3, 'signed publishing handler remains reachable during a refresh');
+  maintenance = false;
   assert.equal((await fetch(origin + '/.env', {headers})).status, 404);
   assert.equal((await fetch(origin + '/', {headers: {Authorization: 'Basic ' + Buffer.from('wrong:password').toString('base64')}})).status, 401);
   let rejected;

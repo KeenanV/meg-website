@@ -5,6 +5,7 @@ node_modules/
 
 # Build output and generated framework files
 dist/
+dist-preview/
 .astro/
 .sanity/
 *.tsbuildinfo

@@ -12,5 +12,5 @@
     "noEmit": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"]
   },
-  "include": ["sanity.config.ts", "sanity.cli.ts", "structure.ts", "schemas/**/*.ts"]
+  "include": ["sanity.config.ts", "sanity.cli.ts", "structure.ts", "presentation.ts", "components/**/*.tsx", "schemas/**/*.ts"]
 }
