@@ -70,6 +70,9 @@ jobs:
       - name: Deploy contact and publishing backend
         if: steps.publishing.outputs.mode == 'full'
         run: node scripts/deploy-backend.mjs
+      - name: Deploy private editorial preview
+        if: steps.publishing.outputs.mode == 'full'
+        run: node scripts/deploy-editorial.mjs production
       - name: Deploy production Studio
         if: steps.publishing.outputs.mode == 'full'
         working-directory: apps/studio

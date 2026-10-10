@@ -57,7 +57,19 @@ export function createServiceHandler(env = process.env) {
     async sendEmail(payload, key) {
       await post('https://api.resend.com/emails', `Bearer ${config.resendKey}`, payload, { 'Idempotency-Key': key });
     },
-    async dispatch() {
+    async dispatch(event) {
+      if (target.dataset === 'staging' && env.STUDIO_SYNC_ENABLED === 'true') {
+        const db = new Firestore({projectId: config.project});
+        const suppressed = await db.runTransaction(async tx => {
+          const lock = db.collection('studioOperations').doc('sync');
+          const state = (await tx.get(lock)).data();
+          const revision = typeof event?.revision === 'string' && /^[\w-]{1,128}$/.test(event.revision)
+            ? await tx.get(db.collection('studioSyncRevisions').doc(event.revision)) : null;
+          if (state?.maintenance) {tx.update(lock, {pendingPublications: true}); return true;}
+          return revision?.exists === true;
+        });
+        if (suppressed) return;
+      }
       await post(`https://api.github.com/repos/KeenanV/meg-website/actions/workflows/${target.workflow}/dispatches`,
         `Bearer ${config.githubToken}`, { ref: target.branch, inputs: {deployment_type: 'content'} }, {
           Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',
