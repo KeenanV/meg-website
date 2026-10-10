@@ -7,6 +7,8 @@ export async function getStaticPaths() {
   return articlePaths(await sanity.fetch<Article[]>(qPostPages));
 }
 interface Props { entry: Article }
-const { entry } = Astro.props;
+const entry = Astro.props.entry ?? (import.meta.env.EDITORIAL_PREVIEW
+  ? (await sanity.fetch<Article[]>(qPostPages)).find(item => item.slug === Astro.params.slug) : undefined);
+if (!entry) return new Response('Article not found in this preview.', {status: 404});
 ---
 <ArticlePage entry={entry} kind="blog" />

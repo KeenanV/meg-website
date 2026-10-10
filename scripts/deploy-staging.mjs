@@ -13,7 +13,7 @@ run(gcloud, ['run', 'deploy', 'staging-website', '--source='+context, '--region=
   '--project=megvandeusen-staging', ...accountFlags,
   '--service-account=staging-website@megvandeusen-staging.iam.gserviceaccount.com',
   '--build-service-account=projects/megvandeusen-staging/serviceAccounts/staging-builder@megvandeusen-staging.iam.gserviceaccount.com',
-  '--update-env-vars=GOOGLE_CLOUD_PROJECT=megvandeusen-staging,PRIVATE_CATALOG=sanity,SANITY_PROJECT_ID=ap0mc9ri,SANITY_DATASET=staging',
+  '--update-env-vars=GOOGLE_CLOUD_PROJECT=megvandeusen-staging,PRIVATE_CATALOG=sanity,SANITY_PROJECT_ID=ap0mc9ri,SANITY_DATASET=staging,STUDIO_SYNC_ENABLED=true',
   '--min=0', '--max=1', '--max-instances=1', '--concurrency=20', '--cpu=1', '--memory=512Mi',
   '--timeout=60s', '--cpu-throttling', '--no-cpu-boost', '--quiet']);
 run(process.execPath, ['scripts/deploy-staging-hosting.mjs']);

@@ -114,7 +114,7 @@ export function createHandler({ config, assess, sendEmail, dispatch, now = Date.
         if (!deliveries.has(key)) {
           if (!pending.has(key)) {
             pending.set(key, (async () => {
-              await dispatch();
+              await dispatch(event);
               if (deliveries.size >= 2048) deliveries.delete(deliveries.keys().next().value);
               deliveries.set(key, now() + 86_400_000);
             })().finally(() => pending.delete(key)));

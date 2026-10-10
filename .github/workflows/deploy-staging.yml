@@ -55,16 +55,22 @@ jobs:
       - uses: ./.github/actions/setup-project
         with:
           content-only: ${{ steps.publishing.outputs.mode == 'content' }}
-      - if: steps.publishing.outputs.mode == 'full'
-        run: npm run verify
-      - if: steps.publishing.outputs.mode == 'content'
-        run: npm run verify:content
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           project_id: megvandeusen-staging
           workload_identity_provider: projects/76495183695/locations/global/workloadIdentityPools/github/providers/meg-website
           service_account: github-hosting@megvandeusen-staging.iam.gserviceaccount.com
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - name: Coordinate with Studio content refreshes
+        id: operation_lock
+        run: node scripts/staging-deployment-lock.mjs acquire
+      - if: steps.publishing.outputs.mode == 'full'
+        run: npm run verify
+      - if: steps.publishing.outputs.mode == 'content'
+        run: npm run verify:content
+      - name: Deploy private editorial preview and staging sync worker
+        if: steps.publishing.outputs.mode == 'full'
+        run: node scripts/deploy-editorial.mjs staging
       - name: Deploy staging Studio
         if: steps.publishing.outputs.mode == 'full'
         working-directory: apps/studio
@@ -77,6 +83,9 @@ jobs:
         env:
           STAGING_REVIEWER: ${{ secrets.STAGING_REVIEWER }}
         run: node scripts/check-staging.mjs
+      - name: Release staging deployment lock
+        if: always() && steps.operation_lock.outcome == 'success'
+        run: node scripts/staging-deployment-lock.mjs release
       - name: Full deployment completed
         if: steps.publishing.outputs.mode == 'full'
         run: echo 'Full staging code deployment completed.'

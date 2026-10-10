@@ -6,6 +6,7 @@ import {Storage} from '@google-cloud/storage';
 import {Firestore} from '@google-cloud/firestore';
 import {firestoreAllowance} from './abuse.mjs';
 import {bucketUploads, sanityEditor, studioUploadHandler} from './studio-upload.mjs';
+import {studioSyncApi, cloudSyncLauncher} from './studio-sync-api.mjs';
 
 if (process.env.GOOGLE_CLOUD_PROJECT !== 'megvandeusen-staging') throw new Error('Staging server requires the staging project.');
 const secret = JSON.parse(process.env.STAGING_ACCESS || '{}');
@@ -19,7 +20,19 @@ const studio = studioUploadHandler({dataset: 'staging',
   uploads: bucketUploads(new Storage({projectId: 'megvandeusen-staging'}).bucket('megvandeusen-staging-resources'), db),
   allow: firestoreAllowance(db, 'studio'),
 });
-const handler = stagingGateway({directory: new URL('../site', import.meta.url).pathname, basicHash: secret.basicHash, resources, studio, publishing: createServiceHandler()});
+const sync = process.env.STUDIO_SYNC_ENABLED === 'true' ? studioSyncApi({db,
+  origins: ['http://localhost:3333', 'http://localhost:3334', 'https://megvandeusen.sanity.studio', 'https://megvandeusen-staging.sanity.studio'],
+  authorize: token => sanityEditor(token, 'ap0mc9ri'), launch: cloudSyncLauncher(),
+}) : undefined;
+let maintenanceCache = {expires: 0, value: false};
+async function maintenance() {
+  if (!sync) return false;
+  if (maintenanceCache.expires > Date.now()) return maintenanceCache.value;
+  const state = (await db.collection('studioOperations').doc('sync').get()).data();
+  maintenanceCache = {expires: Date.now() + 2000, value: state?.maintenance === true};
+  return maintenanceCache.value;
+}
+const handler = stagingGateway({directory: new URL('../site', import.meta.url).pathname, basicHash: secret.basicHash, resources, studio, sync, maintenance, publishing: createServiceHandler()});
 const server = createServer({maxHeaderSize: 16_384, requestTimeout: 20_000, headersTimeout: 15_000}, handler);
 server.listen(Number(process.env.PORT || 8080), '0.0.0.0');
 process.on('SIGTERM', () => server.close());

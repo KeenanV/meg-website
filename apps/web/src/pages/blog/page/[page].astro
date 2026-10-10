@@ -12,5 +12,7 @@ export async function getStaticPaths() {
   }));
 }
 interface Props { page: number; items: Article[] }
+const requestedPage = Astro.props.page ?? Number(Astro.params.page);
+if (!Number.isSafeInteger(requestedPage) || requestedPage < 1) return new Response('Not found.', {status: 404});
 ---
-<ArticlePage kind="blog" page={Astro.props.page} items={Astro.props.items} />
+<ArticlePage kind="blog" page={requestedPage} items={Astro.props.items} />
