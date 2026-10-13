@@ -1,6 +1,10 @@
 import {createHash} from 'node:crypto';
 import {privateAudioKey} from './studio-upload.mjs';
 
+// Share the order with the draft preview. Unranked legacy recordings retain
+// alphabetical order until Studio's one-time Reset Order initializes them.
+export const privateCatalogQuery = '*[_type == "meditation" && defined(privateAudio.objectKey)] | order(orderRank asc, title asc, _id asc)[0...1000]{_id,title,excerpt,recordingType,customRecordingType,privateAudio,"imageUrl":cover.asset->url}';
+
 // Published editor metadata is public; neither credentials nor audio bytes are
 // stored in Sanity. Object names alone confer no GCS access.
 export function sanityPrivateCatalog({project, dataset, request = fetch, now = Date.now}) {
@@ -9,9 +13,8 @@ export function sanityPrivateCatalog({project, dataset, request = fetch, now = D
   return async () => {
     if (cache && expires > now()) return cache;
     if (!pending) pending = (async () => {
-      const query = '*[_type == "meditation" && defined(privateAudio.objectKey)] | order(title asc, _id asc)[0...1000]{_id,title,excerpt,recordingType,customRecordingType,privateAudio,"imageUrl":cover.asset->url}';
       const url = new URL(`https://${project}.api.sanity.io/v2025-10-26/data/query/${dataset}`);
-      url.searchParams.set('query', query); url.searchParams.set('perspective', 'published');
+      url.searchParams.set('query', privateCatalogQuery); url.searchParams.set('perspective', 'published');
       const response = await request(url, {signal: AbortSignal.timeout(8000), redirect: 'error'});
       if (!response.ok) throw new Error('Catalog unavailable');
       const {result} = await response.json();

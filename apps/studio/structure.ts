@@ -1,6 +1,7 @@
-import {StructureBuilder} from 'sanity/structure'
+import type {StructureResolver} from 'sanity/structure'
+import {orderableDocumentListDeskItem} from '@sanity/orderable-document-list'
 
-export const structure = (S: StructureBuilder) =>
+export const structure: StructureResolver = (S, context) =>
     S.list()
     .title("Meg's Studio")
     .items([
@@ -41,6 +42,6 @@ export const structure = (S: StructureBuilder) =>
       S.documentTypeListItem('book').title('Books'),
       S.documentTypeListItem('blogPost').title('Blog Posts'),
       S.documentTypeListItem('newsItem').title('News'),
-      S.documentTypeListItem('meditation').title('Resources'),
+      orderableDocumentListDeskItem({type: 'meditation', id: 'meditation', title: 'Resources', S, context}),
 
     ])
