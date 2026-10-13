@@ -13,6 +13,7 @@ import {Storage} from '../../backend/src/preview-storage.mjs';
 import {previewSessions, PREVIEW_COOKIE, PREVIEW_TTL, previewRedirect} from '../../backend/src/preview-session.mjs';
 import {localBurst} from '../../backend/src/abuse.mjs';
 import {privateAudioKey} from '../../backend/src/studio-upload.mjs';
+import {privateCatalogQuery} from '../../backend/src/private-catalog.mjs';
 
 const dataset = process.env.PUBLIC_SANITY_DATASET;
 const project = dataset === 'production' ? 'megvandeusen-website' : 'megvandeusen-staging';
@@ -33,7 +34,7 @@ const root = path.resolve(fileURLToPath(new URL('../dist-preview/client/', impor
 const {handler} = await import('../dist-preview/server/entry.mjs');
 const types = {'.js': 'text/javascript', '.css': 'text/css', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2'};
 async function catalog() {
-  const items = await client.fetch('*[_type == "meditation" && defined(privateAudio.objectKey)] | order(title asc){_id,title,excerpt,recordingType,customRecordingType,privateAudio,"imageUrl":cover.asset->url}');
+  const items = await client.fetch(privateCatalogQuery);
   return items.map(item => ({...item, id: createHash('sha256').update(item._id).digest('hex')}));
 }
 const server = createServer({maxHeaderSize: 16384, requestTimeout: 20000}, async (req, res) => {

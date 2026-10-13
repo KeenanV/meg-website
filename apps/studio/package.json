@@ -6,10 +6,12 @@
     "dev": "sanity dev",
     "build": "sanity build",
     "start": "sanity start",
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && npm run check:schema",
+    "check:schema": "sanity schema extract --path .sanity/schema-check.json",
     "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
+    "@sanity/orderable-document-list": "2.0.27",
     "@sanity/preview-url-secret": "^4.1.5",
     "@sanity/vision": "6.16.0",
     "react": "19.3.0",

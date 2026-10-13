@@ -8,6 +8,30 @@ authenticated, live renderer of the same Astro pages; creating or editing drafts
 does not run a GitHub deployment. Publishing retains the existing content-only
 deployment workflow. Resources uses its existing dynamic published catalog.
 
+### Arranging Resources recordings
+
+Open **Structure → Resources** and drag recordings using the handle beside each
+row. The list also offers move-up/move-down controls; a focused drag handle supports
+Space to pick up, arrow keys to move, and Space to drop (Escape cancels).
+
+On first use in each dataset, a yellow message may say recordings have no order.
+Choose **⋯ → Reset Order** once, then arrange the list. Reset assigns ranks to
+existing items; it is not an alphabetical-sort command and may change the order.
+New recordings start at the end. Do not use Reset Order as a routine save button.
+
+Reordering saves immediately in that Studio's dataset, including the published
+copy's rank when editing a draft of an already published recording. It does not
+publish the draft's text or audio changes. The Resources page uses this order
+after refreshing (allow up to 30 seconds for the catalog cache). Draft-only items
+remain private; publish them normally when ready. Preview follows the same ranks.
+No website build is needed for the catalog to reflect a reorder, although the
+existing published-content webhook can still queue a content deployment.
+
+The hidden `orderRank` field travels with each recording during staging refreshes.
+Update protects conflicting staging edits; Reset copies production's ranks along
+with its content. Nothing initializes or reorders either dataset merely by
+deploying this feature. Until initialized, the website keeps alphabetical order.
+
 From an open document, expand **Used on … pages** and choose its page to open
 Preview at the right location. On a narrow screen, **Structure** and
 **Presentation** switch between the editor and the page. Draft edits refresh the

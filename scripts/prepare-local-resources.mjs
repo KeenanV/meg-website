@@ -13,7 +13,7 @@ const env = Object.fromEntries((await readFile(new URL('apps/web/.env', root), '
 const config = {projectId: env.PUBLIC_SANITY_PROJECT_ID, dataset: env.PUBLIC_SANITY_DATASET || 'production', apiVersion: '2025-10-26', useCdn: false, perspective: 'published'};
 const client = createClient(config);
 const builder = createImageUrlBuilder(config);
-const documents = await client.fetch('*[_type == "meditation" && defined(audio.asset) && lower(audio.asset->extension) == "mp3"] | order(title asc, _id asc){_id,title,excerpt,recordingType,customRecordingType,cover,"audioUrl":audio.asset->url}');
+const documents = await client.fetch('*[_type == "meditation" && defined(audio.asset) && lower(audio.asset->extension) == "mp3"] | order(orderRank asc, title asc, _id asc){_id,title,excerpt,recordingType,customRecordingType,cover,"audioUrl":audio.asset->url}');
 await mkdir(directory, {recursive: true, mode: 0o700});
 await chmod(directory, 0o700);
 async function download(url, filename) {

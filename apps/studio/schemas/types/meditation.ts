@@ -1,4 +1,5 @@
 import {defineField, defineType} from 'sanity';
+import {orderRankField, orderRankOrdering} from '@sanity/orderable-document-list';
 import {imageAlt} from '../fields';
 import {PrivateRecordingInput} from '../../components/PrivateRecordingInput';
 
@@ -6,6 +7,7 @@ import {PrivateRecordingInput} from '../../components/PrivateRecordingInput';
 export default defineType({
   name: 'meditation', title: 'Recording', type: 'document',
   fields: [
+    orderRankField({type: 'meditation', newItemPosition: 'after'}),
     defineField({name: 'title', title: 'Title', type: 'string', validation: rule => rule.required()}),
     defineField({name: 'recordingType', title: 'Recording type', type: 'string',
       description: 'The green label on the Resources card. Existing recordings without a selection display GUIDED MEDITATION.',
@@ -42,6 +44,6 @@ export default defineType({
       validation: rule => rule.custom(value =>
         !value?.asset?._ref || /-mp3$/i.test(value.asset._ref) ? true : 'Choose an MP3 audio file.')}),
   ],
-  orderings: [{title: 'Title', name: 'titleAsc', by: [{field: 'title', direction: 'asc'}]}],
+  orderings: [orderRankOrdering],
   preview: {select: {title: 'title', subtitle: 'excerpt', media: 'cover'}},
 });
