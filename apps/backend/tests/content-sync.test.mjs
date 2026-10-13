@@ -4,6 +4,15 @@ import {planSync, contentHash, applySync, validateContent, assertSnapshot} from 
 import {previewSessions, previewRedirect, PREVIEW_COOKIE, PREVIEW_TTL} from '../src/preview-session.mjs';
 
 const doc = (id, title = id, extra = {}) => ({_id: id, _type: 'book', _rev: 'rev-' + id, title, ...extra});
+test('Resources order changes sync and conflicting staging reorders remain protected', () => {
+  const previous = doc('recording', 'Practice', {_type: 'meditation', orderRank: '0|000008:'});
+  const baseline = {recording: {source: contentHash(previous), target: contentHash(previous)}};
+  const reordered = {...previous, orderRank: '0|000004:'};
+  assert.deepEqual(planSync({source: [reordered], target: [previous], baseline, mode: 'update'}).update, ['recording']);
+  const stagingEdit = {...previous, orderRank: '0|000012:'};
+  assert.equal(planSync({source: [reordered], target: [stagingEdit], baseline, mode: 'update'}).conflicts.length, 1);
+  assert.deepEqual(planSync({source: [reordered], target: [stagingEdit], mode: 'reset'}).update, ['recording']);
+});
 test('ordinary update preserves experiments, excludes production drafts and stops on staging conflicts', () => {
   const source = [doc('a', 'new'), doc('b'), doc('drafts.secret')];
   const target = [doc('a', 'edited in staging'), doc('experiment')];
