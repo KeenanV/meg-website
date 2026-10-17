@@ -11,18 +11,18 @@ import {studioSyncApi, cloudSyncLauncher} from './studio-sync-api.mjs';
 if (process.env.GOOGLE_CLOUD_PROJECT !== 'megvandeusen-staging') throw new Error('Staging server requires the staging project.');
 const secret = JSON.parse(process.env.STAGING_ACCESS || '{}');
 const resources = cloudResources({project: 'megvandeusen-staging', bucketName: 'megvandeusen-staging-resources',
-  ...(process.env.PRIVATE_CATALOG === 'sanity' ? {sanity: {project: 'ap0mc9ri', dataset: 'staging'}} : {}),
+  ...(process.env.PRIVATE_CATALOG === 'sanity' ? {sanity: {project: '77uvsyo1', dataset: 'staging'}} : {}),
   credentials: secret.resources, signingSecret: secret.resources.hash, siteKey: process.env.RECAPTCHA_SITE_KEY, origins: ['https://staging.megvandeusen.com', 'https://megvandeusen-staging.web.app', 'https://megvandeusen-staging.firebaseapp.com']});
 const db = new Firestore({projectId: 'megvandeusen-staging'});
 const studio = studioUploadHandler({dataset: 'staging',
-  origins: ['http://localhost:3333', 'http://localhost:3334', 'https://megvandeusen-staging.sanity.studio'],
-  authorize: token => sanityEditor(token, 'ap0mc9ri'),
+  origins: ['http://localhost:3333', 'http://localhost:3334', 'https://meg-website-staging.sanity.studio'],
+  authorize: token => sanityEditor(token, '77uvsyo1'),
   uploads: bucketUploads(new Storage({projectId: 'megvandeusen-staging'}).bucket('megvandeusen-staging-resources'), db),
   allow: firestoreAllowance(db, 'studio'),
 });
 const sync = process.env.STUDIO_SYNC_ENABLED === 'true' ? studioSyncApi({db,
-  origins: ['http://localhost:3333', 'http://localhost:3334', 'https://megvandeusen.sanity.studio', 'https://megvandeusen-staging.sanity.studio'],
-  authorize: token => sanityEditor(token, 'ap0mc9ri'), launch: cloudSyncLauncher(),
+  origins: ['http://localhost:3333', 'http://localhost:3334', 'https://megvandeusen.sanity.studio', 'https://meg-website-staging.sanity.studio'],
+  authorize: async token => await sanityEditor(token, '77uvsyo1') || await sanityEditor(token, 'ap0mc9ri'), launch: cloudSyncLauncher(),
 }) : undefined;
 let maintenanceCache = {expires: 0, value: false};
 async function maintenance() {
@@ -32,7 +32,7 @@ async function maintenance() {
   maintenanceCache = {expires: Date.now() + 2000, value: state?.maintenance === true};
   return maintenanceCache.value;
 }
-const handler = stagingGateway({directory: new URL('../site', import.meta.url).pathname, basicHash: secret.basicHash, resources, studio, sync, maintenance, publishing: createServiceHandler()});
+const handler = stagingGateway({directory: new URL('../site', import.meta.url).pathname, basicHash: secret.basicHash, reviewers: secret.reviewers, resources, studio, sync, maintenance, publishing: createServiceHandler()});
 const server = createServer({maxHeaderSize: 16_384, requestTimeout: 20_000, headersTimeout: 15_000}, handler);
 server.listen(Number(process.env.PORT || 8080), '0.0.0.0');
 process.on('SIGTERM', () => server.close());

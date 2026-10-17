@@ -9,7 +9,7 @@ if (process.env.GOOGLE_CLOUD_PROJECT !== 'megvandeusen-staging' || !/^[a-f0-9-]{
 const db = new Firestore({projectId: 'megvandeusen-staging'});
 const lock = db.collection('studioOperations').doc('sync');
 const recoveryId = randomUUID();
-const create = identifier => syncStorage({id: identifier, db, sourceToken: process.env.SANITY_PRODUCTION_READ_TOKEN, targetToken: process.env.SANITY_STAGING_WRITE_TOKEN});
+const create = identifier => syncStorage({id: identifier, db, targetToken: process.env.SANITY_STAGING_WRITE_TOKEN});
 const adapter = create(id);
 let acquired = false;
 async function restore() {

@@ -1,4 +1,5 @@
-import {createHash, timingSafeEqual} from 'node:crypto';
+import {reportOnlyCsp} from './security-policy.mjs';
+import {reviewerAccess} from './reviewer-access.mjs';
 import {stat} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {pipeline} from 'node:stream/promises';
@@ -11,18 +12,20 @@ const types = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 
 // Staging-only outer gate: require the separate randomly generated reviewer
 // credential on every request, including assets, APIs, and direct run.app URLs.
-export function stagingGateway({directory, basicHash, resources, studio, publishing, sync, maintenance = async () => false}) {
+export function stagingGateway({directory, basicHash, reviewers, resources, studio, publishing, sync, maintenance = async () => false}) {
+  const authorize = reviewerAccess({basicHash, reviewers});
   const root = path.resolve(directory);
   const failedReviewerAttempts = localBurst(60, 60_000);
   return async (req, res) => {
     res.setHeader('Cache-Control', 'private, no-store');
     res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
     res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy-Report-Only', reportOnlyCsp);
     res.setHeader('Referrer-Policy', 'no-referrer');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Vary', 'Authorization, Cookie');
     const reply = (code, body) => { res.writeHead(code, {'Content-Type': 'text/plain; charset=utf-8'}); res.end(body); };
-    if (!/^[a-f0-9]{64}$/.test(basicHash || '')) return reply(503, 'Staging access is not configured.');
+    if (!authorize) return reply(503, 'Staging access is not configured.');
     try {
       // Studio uploads use independently verified Sanity editor authentication.
       // Preflight exposes no content; all operations enforce editor membership.
@@ -32,11 +35,7 @@ export function stagingGateway({directory, basicHash, resources, studio, publish
       // Sanity cannot use the reviewer login. This route verifies its own HMAC
       // signature and the exact dataset before it can dispatch a build.
       if (publishing && uploadRoute === '/sanity-hook') return await publishing(req, res);
-      const authorization = req.headers.authorization || '';
-      const basic = /^Basic ([A-Za-z0-9+/]+={0,2})$/i.exec(authorization);
-      const value = basic && authorization.length <= 1024 ? Buffer.from(basic[1], 'base64') : Buffer.alloc(0);
-      const supplied = createHash('sha256').update(value).digest();
-      if (!timingSafeEqual(supplied, Buffer.from(basicHash, 'hex'))) {
+      if (!authorize(req.headers.authorization)) {
         if (!failedReviewerAttempts()) {
           res.setHeader('Retry-After', '60');
           return reply(429, 'Too many requests. Please try again shortly.');

@@ -13,8 +13,8 @@ export function studioSyncApi({db, authorize, origins, launch, allowance = fires
         message: 'Worker startup was not confirmed. Check status before creating a new plan.', finished: Date.now()});
     });
   }
-  async function launchReviewed(ref, id, phase, expected) {
-    try {await launch(id, phase);}
+  async function launchReviewed(ref, expected) {
+    try {await launch();}
     catch (error) {
       await failedLaunch(ref, expected);
       throw error;
@@ -47,7 +47,7 @@ export function studioSyncApi({db, authorize, origins, launch, allowance = fires
         if (!await allowance([{key: 'plans:' + owner, limit: 10, duration: 3_600_000}, {key: 'plans-global', limit: 20, duration: 3_600_000}])) return reply(429, {message: 'The hourly sync allowance has been reached. Please try later.'});
         const id = randomUUID();
         await db.collection('studioSyncRuns').doc(id).create({owner, mode: body.mode, status: 'queued', created: Date.now(), message: 'Preparing change summary…'});
-        await launchReviewed(db.collection('studioSyncRuns').doc(id), id, 'plan', 'queued');
+        await launchReviewed(db.collection('studioSyncRuns').doc(id), 'queued');
         return reply(202, {id});
       }
       if (!/^[a-f0-9-]{36}$/.test(body.id || '')) return reply(400, {message: 'Invalid sync ID.'});
@@ -64,9 +64,9 @@ export function studioSyncApi({db, authorize, origins, launch, allowance = fires
         await db.runTransaction(async tx => {
           const current = (await tx.get(ref)).data();
           if (current.status !== 'review' || current.plan?.conflicts.length || current.created < Date.now() - 3_600_000) throw new Error('Plan is stale or has conflicts');
-          tx.update(ref, {status: 'queued-apply', message: 'Waiting to copy the reviewed content…'});
+          tx.update(ref, {status: 'queued-apply', approvedBy: owner, approvedAt: Date.now(), message: 'Waiting to copy the reviewed content…'});
         });
-        await launchReviewed(ref, body.id, 'apply', 'queued-apply');
+        await launchReviewed(ref, 'queued-apply');
         return reply(202, {id: body.id});
       }
       return reply(404, {message: 'Not found.'});
@@ -74,11 +74,10 @@ export function studioSyncApi({db, authorize, origins, launch, allowance = fires
   };
 }
 
-export function cloudSyncLauncher() {
-  const auth = new GoogleAuth({scopes: ['https://www.googleapis.com/auth/cloud-platform']});
-  return async (id, phase) => {
+export function cloudSyncLauncher(auth = new GoogleAuth({scopes: ['https://www.googleapis.com/auth/cloud-platform']})) {
+  return async () => {
     const client = await auth.getClient();
     await client.request({url: 'https://run.googleapis.com/v2/projects/megvandeusen-staging/locations/us-west1/jobs/studio-content-sync:run',
-      method: 'POST', data: {overrides: {containerOverrides: [{args: ['src/sync-job.mjs', id, phase]}]}}});
+      method: 'POST', data: {}});
   };
 }

@@ -1,3 +1,4 @@
+import {reportOnlyCsp} from '../apps/backend/src/security-policy.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +10,7 @@ export function createWebsiteConfig(channel = 'preview') {
   // The CLI checks this against the repository root even when --config is in .firebase/.
   config.hosting.public = fileURLToPath(new URL('../apps/web/dist', import.meta.url));
   delete config.emulators;
+  config.hosting.headers.find(item => item.source === '**').headers.push({key: 'Content-Security-Policy-Report-Only', value: reportOnlyCsp});
   if (channel === 'preview') {
     config.hosting.headers.push({
       source: '**', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],

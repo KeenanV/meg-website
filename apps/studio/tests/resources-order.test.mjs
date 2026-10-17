@@ -24,7 +24,7 @@ test('Resources follows manual ranks, with stable alphabetical fallback for exis
 test('published catalog preserves manual order and refreshes it after the cache expires', async () => {
   let now = 0, requests = 0;
   const docs = [recording('b', 'Breathing', '0|000008:'), recording('a', 'Awareness', '0|000010:')];
-  const catalog = sanityPrivateCatalog({project: 'ap0mc9ri', dataset: 'staging', now: () => now,
+  const catalog = sanityPrivateCatalog({project: '77uvsyo1', dataset: 'staging', now: () => now,
     request: async url => {
       requests++;
       assert.equal(url.searchParams.get('perspective'), 'published');

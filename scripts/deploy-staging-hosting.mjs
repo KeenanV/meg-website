@@ -29,3 +29,6 @@ const version = await request('POST', `sites/${project}/versions`, {config});
 await request('PATCH', version.name+'?updateMask=status', {status: 'FINALIZED'});
 const release = await request('POST', `sites/${project}/releases?versionName=${version.name}`, {message: 'Private staging proxy; no public static files'});
 console.log('Released staging:', release.name);
+
+// Retired releases can be redeployed with current secrets; their public tags need not stay live.
+run(process.execPath, ['scripts/retire-staging-tags.mjs', '--apply']);

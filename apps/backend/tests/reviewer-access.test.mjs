@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {reviewerAccess} from '../src/reviewer-access.mjs';
+const digest = value => createHash('sha256').update(value).digest('hex');
+const header = value => 'Basic ' + Buffer.from(value).toString('base64');
+test('individual reviewer accounts remain bound to username; removal revokes only that account', () => {
+  const reviewers = {alice: digest('alice:random-password-a'), bob: digest('bob:random-password-b')};
+  const gate = reviewerAccess({reviewers});
+  assert.equal(gate(header('alice:random-password-a')), true);
+  assert.equal(gate(header('bob:random-password-b')), true);
+  assert.equal(gate(header('bob:random-password-a')), false);
+  assert.equal(gate('Bearer invalid'), false);
+  assert.equal(gate('Basic ' + 'a'.repeat(2000)), false);
+  const removed = reviewerAccess({reviewers: {bob: reviewers.bob}, basicHash: reviewers.alice});
+  assert.equal(removed(header('alice:random-password-a')), false);
+  assert.equal(removed(header('bob:random-password-b')), true);
+  assert.equal(reviewerAccess({basicHash: reviewers.alice})(header('alice:random-password-a')), true);
+  assert.equal(reviewerAccess({reviewers: {}}), null);
+  assert.equal(reviewerAccess({reviewers: {alice: 'malformed'}}), null);
+});

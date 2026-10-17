@@ -100,7 +100,7 @@ test('published private catalog rejects untrusted keys, drafts, generations and 
     objectKey: 'recordings/12345678-1234-1234-1234-123456789012.mp3', generation: '123'},
     imageUrl: 'https://attacker.example/image.jpg'};
   let reads = 0;
-  const catalog = sanityPrivateCatalog({project: 'ap0mc9ri', dataset: 'staging', request: async () => {
+  const catalog = sanityPrivateCatalog({project: '77uvsyo1', dataset: 'staging', request: async () => {
     reads++;
     return {ok: true, json: async () => ({result: [valid, {...valid, _id: 'drafts.two'},
       {...valid, privateAudio: {objectKey: '../secret', generation: '123'}}, {...valid, privateAudio: {objectKey: valid.privateAudio.objectKey}}]})};
