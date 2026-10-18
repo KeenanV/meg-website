@@ -22,6 +22,19 @@ def cloud(*args, data=None, optional=False):
         raise RuntimeError('Cloud operation failed: ' + ' '.join(args[:3]))
     return result
 
+# Restriction mode deliberately performs no provisioning or credential changes.
+if args.restrict_sync_launcher:
+    project = 'megvandeusen-staging'
+    cloud('run', 'jobs', 'add-iam-policy-binding', 'studio-content-sync', '--region=us-west1', '--project=' + project,
+          '--member=serviceAccount:staging-website@' + project + '.iam.gserviceaccount.com', '--role=roles/run.jobsExecutor')
+    policy = json.loads(cloud('projects', 'get-iam-policy', project, '--format=json').stdout)
+    member = 'serviceAccount:staging-website@' + project + '.iam.gserviceaccount.com'
+    if any(b['role'] == 'roles/run.jobsExecutorWithOverrides' and member in b.get('members', []) for b in policy.get('bindings', [])):
+        cloud('projects', 'remove-iam-policy-binding', project, '--member=' + member,
+              '--role=roles/run.jobsExecutorWithOverrides', '--condition=None')
+    print('Fixed-worker execution granted; project override grant removed.', flush=True)
+    raise SystemExit(0)
+
 def token(label, role, project_id):
     result = subprocess.run(['./node_modules/.bin/sanity', 'tokens', 'create', label,
                              '--role=' + role, '--project-id=' + project_id, '--expires-at=2027-04-17', '--yes', '--json'],
@@ -52,7 +65,7 @@ def binding(project, member, role):
 
 def bucket_role(bucket, member, role):
     cloud('storage', 'buckets', 'add-iam-policy-binding', 'gs://' + bucket,
-          '--member=serviceAccount:' + member, '--role=' + role)
+          '--member=serviceAccount:' + member, '--role=' + role, '--condition=None')
 
 for project in ['megvandeusen-staging', 'megvandeusen-website']:
     preview = f'editorial-preview@{project}.iam.gserviceaccount.com'
@@ -89,15 +102,4 @@ cloud('storage', 'buckets', 'update', 'gs://megvandeusen-staging-editorial', '--
 bucket_role('megvandeusen-staging-editorial', worker, 'roles/storage.objectUser')
 cloud('iam', 'service-accounts', 'add-iam-policy-binding', worker, '--project=' + project,
       '--member=serviceAccount:github-hosting@' + project + '.iam.gserviceaccount.com', '--role=roles/iam.serviceAccountUser')
-# Never change the live launch contract before the compatible worker is deployed.
-if args.restrict_sync_launcher:
-    cloud('run', 'jobs', 'add-iam-policy-binding', 'studio-content-sync', '--region=us-west1', '--project=' + project,
-          '--member=serviceAccount:staging-website@' + project + '.iam.gserviceaccount.com', '--role=roles/run.jobsExecutor')
-    policy = json.loads(cloud('projects', 'get-iam-policy', project, '--format=json').stdout)
-    member = 'serviceAccount:staging-website@' + project + '.iam.gserviceaccount.com'
-    if any(b['role'] == 'roles/run.jobsExecutorWithOverrides' and member in b.get('members', []) for b in policy.get('bindings', [])):
-        cloud('projects', 'remove-iam-policy-binding', project, '--member=' + member,
-              '--role=roles/run.jobsExecutorWithOverrides', '--condition=None')
-    print('Fixed-worker execution granted; project override grant removed.', flush=True)
-else:
-    print('Launcher IAM unchanged. Use --restrict-sync-launcher after deploying the compatible fixed worker.', flush=True)
+print('Launcher IAM unchanged. Use --restrict-sync-launcher after deploying the compatible fixed worker.', flush=True)
