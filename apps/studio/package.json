@@ -7,7 +7,7 @@
     "build": "sanity build",
     "start": "sanity start",
     "check": "tsc --noEmit && npm run check:schema",
-    "check:schema": "sanity schema extract --path .sanity/schema-check.json",
+    "check:schema": "sanity schema extract --path .sanity/schema-check.json --force",
     "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
@@ -37,6 +37,8 @@
     },
     "typeid-js": {
       "uuid": "^11.1.1"
-    }
+    },
+    "source-map-js": "^1.2.2",
+    "undici": "^7.29.1"
   }
 }

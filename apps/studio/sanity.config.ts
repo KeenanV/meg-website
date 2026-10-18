@@ -1,3 +1,4 @@
+import {sanityProject} from '../backend/src/sanity-environments.mjs';
 import { defineConfig } from 'sanity';
 import {structureTool} from 'sanity/structure';
 import {visionTool} from '@sanity/vision';
@@ -14,14 +15,17 @@ if (!['production', 'staging'].includes(dataset)) throw new Error('Unknown Studi
 export default defineConfig({
   name: 'default',
   title: dataset === 'staging' ? "Meg's Studio — STAGING" : "Meg's Studio",
-  projectId: 'ap0mc9ri',
+  projectId: sanityProject(process.env.SANITY_STUDIO_DATASET || 'production'),
   dataset,
   plugins: [
     structureTool({ structure }),       // <— this renders the editor UI
     presentationTool({title: 'Preview', resolve: {locations, mainDocuments},
+      // Presentation's supported mode generates its own secret. The landing
+      // page clears that URL and redeems it once through POST. Cloud log sinks
+      // exclude these secret-bearing request URLs before retention.
       previewUrl: {initial: process.env.SANITY_STUDIO_PREVIEW_URL ||
         `https://editorial-preview-${dataset === 'staging' ? '76495183695' : '348807509213'}.us-west1.run.app`,
-      previewMode: {enable: '/api/preview/enable'}},
+      previewMode: {enable: '/api/preview/enable', shareAccess: false}},
       allowOrigins: ['http://localhost:*'],
     }),
     visionTool()      // handy GROQ playground (optional)

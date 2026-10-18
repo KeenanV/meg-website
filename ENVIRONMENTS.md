@@ -5,7 +5,8 @@
 | Git branch / GitHub environment | `staging` / `Staging` | `master` / `Production` |
 | GCP/Firebase project | `megvandeusen-staging` | `megvandeusen-website` |
 | Website | https://staging.megvandeusen.com | https://megvandeusen.com |
-| Hosted Studio | https://megvandeusen-staging.sanity.studio | https://megvandeusen.sanity.studio |
+| Hosted Studio after hardening migration | https://meg-website-staging.sanity.studio | https://megvandeusen.sanity.studio |
+| Sanity project | `77uvsyo1` | `ap0mc9ri` |
 | Sanity dataset | `staging` | `production` |
 | Workflow | `deploy-staging.yml` | `deploy.yml` |
 | Contact delivery | Owner's test inbox only | Existing professional recipient |
@@ -15,16 +16,18 @@
 1. Open feature PRs against `staging`. Required checks are `verify` and
    `release-source`; feature PRs use squash merges.
 2. Merging triggers a deploy using the exact **Staging** GitHub environment.
-   It verifies source, builds the staging dataset, deploys staging Studio and
-   the protected staging site/backend, then checks the live access controls.
+   It builds/checks without cloud credentials, deploys the verified output to
+   the protected staging site/backend, checks access controls, and deploys Studio
+   in a separate job with only its Sanity deployment credential.
 3. Test the changed feature on staging. Automated checks deliberately do not
    bypass real CAPTCHA; unlock/playback and contact delivery need browser QA.
 4. Open `staging` → `master`. Other sources are rejected by `release-source`.
    The master ruleset requires the successful **Staging** deployment as well as
    the checks. Use a **merge commit** to preserve release ancestry; do not squash
    this release PR or delete the permanent staging branch.
-5. Merging runs the **Production** environment workflow: checks/build, backend,
-   Studio, then Hosting. Verify contact and Resources after release.
+5. Merging runs the **Production** environment workflow: checks/build, backend
+   and Hosting deployment, then the separate Studio job. Verify contact and
+   Resources after release.
 
 The two environments use separate GitHub deployment service accounts and workload
 identity providers; no downloadable GCP service-account key is stored in GitHub.
@@ -74,9 +77,12 @@ separately after promotion. Do not replace the production dataset with staging.
 
 ## Credentials and renewals
 
-- Environment secrets `SANITY_DEPLOY_TOKEN` are separate deploy-only Sanity
-  tokens expiring October 5, 2027. Replace them in the matching GitHub environment.
-  Sanity project-level Studio deployment privileges are not dataset-scoped.
+- Staging uses `SANITY_ISOLATED_DEPLOY_TOKEN`, a deploy-only credential for its
+  separate Sanity project, expiring April 17, 2027. Production retains
+  `SANITY_DEPLOY_TOKEN`, expiring October 5, 2027. Replace each in its matching
+  GitHub environment. Sanity Studio-deployment roles are project-wide, so the
+  separate projects are the isolation boundary. Retire the old staging token
+  only after the coordinated migration described in SECURITY_OPERATIONS.md.
 - `STAGING_REVIEWER` is confined to the Staging environment. It supplies CI with
   the outer reviewer login, never a public CAPTCHA bypass.
 - Staging `RECAPTCHA_SITE_KEY` is a public environment variable; provider secrets,

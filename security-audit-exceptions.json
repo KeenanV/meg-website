@@ -1,0 +1,20 @@
+[
+  {
+    "advisory": "GHSA-vfj7-8cjw-p6xm",
+    "expires": "2026-11-16",
+    "packages": ["braces"],
+    "reason": "No upstream patched version. Brace patterns originate in repository-owned build/watch configuration, never public request input. Studio validation is editor-only; do not pass CMS content as filesystem glob patterns. Recheck upstream before expiry."
+  },
+  {
+    "advisory": "GHSA-c475-qrg2-pj4r",
+    "expires": "2026-11-16",
+    "packages": ["basic-ftp"],
+    "reason": "No compatible patched chain currently available. Firebase deployment tooling contains the FTP parser but this project uses only fixed HTTPS provider endpoints; no visitor or editor supplies an FTP URL. Do not use deployment tooling against untrusted FTP servers."
+  },
+  {
+    "advisory": "GHSA-hp3w-g68c-fv3c",
+    "expires": "2026-11-16",
+    "packages": ["sprintf-js"],
+    "reason": "No upstream patched version. Transitive Studio CLI format strings are fixed dependency code, not CMS/user-defined templates. Private sync validation accepts data, never format strings; restrict edits to reviewed schemas. Recheck upstream before expiry."
+  }
+]

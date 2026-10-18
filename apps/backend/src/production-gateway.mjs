@@ -1,5 +1,7 @@
+import {reportOnlyCsp} from './security-policy.mjs';
 export function productionGateway({service, resources, studio}) {
   return async (req, res) => {
+    res.setHeader('Content-Security-Policy-Report-Only', reportOnlyCsp);
     let path;
     try { path = new URL(req.url, 'http://localhost').pathname; }
     catch { res.writeHead(400, {'Cache-Control': 'no-store'}); res.end('Invalid request.'); return; }

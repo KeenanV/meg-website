@@ -1,3 +1,4 @@
+import {sanityProject} from './sanity-environments.mjs';
 import {createHash} from 'node:crypto';
 import {privateAudioKey} from './studio-upload.mjs';
 
@@ -8,7 +9,7 @@ export const privateCatalogQuery = '*[_type == "meditation" && defined(privateAu
 // Published editor metadata is public; neither credentials nor audio bytes are
 // stored in Sanity. Object names alone confer no GCS access.
 export function sanityPrivateCatalog({project, dataset, request = fetch, now = Date.now}) {
-  if (project !== 'ap0mc9ri' || !['staging', 'production'].includes(dataset)) throw new Error('Invalid catalog environment');
+  if (!['staging', 'production'].includes(dataset) || project !== sanityProject(dataset)) throw new Error('Invalid catalog environment');
   let cache, expires = 0, pending;
   return async () => {
     if (cache && expires > now()) return cache;

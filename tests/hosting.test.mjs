@@ -99,23 +99,31 @@ test('release workflows select their environment, dataset and branch without ove
   for (const [file, branch, environment, dataset] of [['deploy-staging.yml', 'staging', 'Staging', 'staging'], ['deploy.yml', 'master', 'Production', 'production']]) {
     const workflow = parse(readFileSync(new URL('../.github/workflows/'+file, import.meta.url), 'utf8'));
     assert.deepEqual(workflow.on.push.branches, [branch]);
-    assert.equal(workflow.jobs.deploy.if, `github.ref == 'refs/heads/${branch}'`);
+    assert.equal(workflow.jobs.build.if, `github.ref == 'refs/heads/${branch}'`);
     assert.equal(workflow.jobs.deploy.environment.name, environment);
-    assert.equal(workflow.jobs.deploy.env.PUBLIC_SANITY_DATASET, dataset);
-    assert.equal(workflow.jobs.deploy.env.SANITY_STUDIO_DATASET, dataset);
+    assert.equal(workflow.env.PUBLIC_SANITY_DATASET, dataset);
+    assert.equal(workflow.env.SANITY_STUDIO_DATASET, dataset);
     assert.equal(workflow.concurrency['cancel-in-progress'], false);
     assert.equal(workflow.on.workflow_dispatch.inputs.deployment_type.default, 'full');
     assert.deepEqual(workflow.on.workflow_dispatch.inputs.deployment_type.options, ['full', 'content']);
-    assert.equal(workflow.jobs.deploy.permissions.actions, 'read');
+    assert.equal(workflow.jobs.build.permissions.actions, 'read');
     const steps = workflow.jobs.deploy.steps;
-    const fullOnly = "steps.publishing.outputs.mode == 'full'";
-    assert.equal(steps.find(step => step.name === `Deploy ${dataset} Studio`).if, fullOnly);
+    const fullOnly = "needs.build.outputs.mode == 'full'";
+    assert.equal(workflow.jobs.studio.if, fullOnly);
+    assert.equal(workflow.jobs.build.permissions['id-token'], undefined);
+    assert.equal(workflow.jobs.studio.permissions['id-token'], undefined);
+    assert.equal(workflow.jobs.deploy.permissions['id-token'], 'write');
+    assert.equal(workflow.jobs.deploy.needs, 'build');
+    assert.deepEqual(workflow.jobs.studio.needs, ['build', 'deploy']);
+    assert.ok(!steps.some(step => /npm run verify|npm test|npm run build/.test(step.run || '')));
+    assert.ok(steps.some(step => step.run === 'node scripts/deployment-artifact.mjs unpack'));
+    assert.ok(workflow.jobs.studio.steps.some(step => step.run?.includes('--no-build')));
     assert.equal(steps.find(step => step.name === 'Full deployment completed').if, fullOnly);
     assert.equal(steps.at(-1).name, 'Full deployment completed');
-    assert.equal(steps.find(step => step.run === 'npm run verify:content').if, "steps.publishing.outputs.mode == 'content'");
+    assert.equal(workflow.jobs.build.steps.find(step => step.run === 'npm run verify:content').if, "steps.publishing.outputs.mode == 'content'");
     if (dataset === 'production') assert.equal(steps.find(step => step.name === 'Deploy contact and publishing backend').if, fullOnly);
     else {
-      assert.equal(workflow.jobs.deploy.env.PUBLIC_SITE_ENV, 'staging');
+      assert.equal(workflow.env.PUBLIC_SITE_ENV, 'staging');
       assert.ok(steps.find(step => step.run === 'node scripts/check-staging.mjs'));
     }
     const auth = workflow.jobs.deploy.steps.find(step => step.uses?.startsWith('google-github-actions/auth@'));

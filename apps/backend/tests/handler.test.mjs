@@ -170,6 +170,17 @@ test('failed dispatch remains retryable and simultaneous duplicates share one di
   } });
   assert.equal((await hook()).status, 503);
   const results = await Promise.all([hook(), hook()]);
-  assert.deepEqual(results.map(result => result.status), [202, 202]);
+  assert.deepEqual(results.map(result => result.status).sort(), [202, 503]);
+  assert.equal((await hook()).status, 202);
   assert.equal(attempts, 2);
+});
+
+test('signed webhook timestamps reject historical and future replay without dispatch', async t => {
+  const {hook, dispatches} = await setup(t);
+  const raw = JSON.stringify(event());
+  for (const timestamp of [Date.now() - 600_001, Date.now() + 120_000]) {
+    assert.equal((await hook(raw, await encodeSignatureHeader(raw, timestamp, config.webhookSecret))).status, 401);
+  }
+  assert.equal(dispatches.length, 0);
+  assert.equal((await hook(raw, await encodeSignatureHeader(raw, Date.now() - 90_000, config.webhookSecret))).status, 202);
 });
