@@ -28,4 +28,4 @@ result = subprocess.run([
 if result.returncode:
     # Avoid logging provider key material even if a command error echoes its input.
     sys.exit("Upload failed. Check gcloud authentication and Secret Manager permissions; no key was printed.")
-print(f"Stored a new version of {args.secret} in Meg's Google Cloud project. No local file was created.")
+print("Stored a new secret version in Meg's Google Cloud project. No local file was created.")
