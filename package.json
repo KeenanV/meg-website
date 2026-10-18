@@ -22,7 +22,7 @@
   },
   "private": true,
   "devDependencies": {
-    "firebase-tools": "15.31.0"
+    "firebase-tools": "15.34.0"
   },
   "overrides": {
     "gaxios@6.7.1": {
