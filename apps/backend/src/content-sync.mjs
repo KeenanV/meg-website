@@ -42,7 +42,8 @@ export function planSync({source, target, baseline = {}, mode}) {
     // Matching sizes alone do not prove two audio files are identical. A previous
     // verified copy is required to treat remapped recordings as unchanged.
     const sameAudio = !doc.privateAudio || (previous?.source === contentHash(doc) && previous?.target === contentHash(existing));
-    if (equal && sameAudio) {unchanged.push(doc._id); continue;}
+    const verifiedCopy = previous?.source === contentHash(doc) && previous?.target === contentHash(existing);
+    if ((equal && sameAudio) || verifiedCopy) {unchanged.push(doc._id); continue;}
     if (mode === 'update' && (!previous || previous.target !== contentHash(existing))) {
       conflicts.push({id: doc._id, reason: 'Staging differs from the last synchronized copy.'}); continue;
     }

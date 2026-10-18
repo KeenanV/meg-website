@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      PUBLIC_SANITY_PROJECT_ID: ap0mc9ri
+      PUBLIC_SANITY_PROJECT_ID: ${{ github.base_ref == 'staging' && '77uvsyo1' || 'ap0mc9ri' }}
       PUBLIC_SANITY_DATASET: ${{ github.base_ref == 'staging' && 'staging' || 'production' }}
       SANITY_STUDIO_DATASET: ${{ github.base_ref == 'staging' && 'staging' || 'production' }}
       SITE_URL: https://megvandeusen.com
@@ -41,3 +41,5 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-project
       - run: npm run verify
+      - name: Check advisories and expiring security exceptions
+        run: node scripts/check-security-audit.mjs

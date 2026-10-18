@@ -1,3 +1,4 @@
+import {previewHandoff} from '../preview-handoff';
 import {useState} from 'react';
 import {useClient, useCurrentUser, type DocumentActionComponent} from 'sanity';
 import {createPreviewSecret} from '@sanity/preview-url-secret/create-secret';
@@ -25,14 +26,12 @@ export const PreviewDraftAction: DocumentActionComponent = props => {
       void (async () => {
         try {
           const {secret} = await createPreviewSecret(client, 'meg-studio-document-preview', window.location.origin, user?.id);
-          const origin = `https://editorial-preview-${dataset === 'staging' ? '76495183695' : '348807509213'}.us-west1.run.app`;
-          const url = new URL('/api/preview/enable', origin);
+          const origin = process.env.SANITY_STUDIO_PREVIEW_URL ||
+            `https://editorial-preview-${dataset === 'staging' ? '76495183695' : '348807509213'}.us-west1.run.app`;
           let route = paths[props.type];
           const slug = document?.slug as {current?: string} | undefined;
           if (['blogPost', 'newsItem'].includes(props.type) && slug?.current) route += '/' + encodeURIComponent(slug.current);
-          url.searchParams.set('sanity-preview-secret', secret);
-          url.searchParams.set('sanity-preview-pathname', route);
-          popup.location.replace(url.href);
+          popup.location.replace(previewHandoff(origin, secret, route));
           props.onComplete();
         } catch {
           popup.close();

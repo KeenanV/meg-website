@@ -1,3 +1,4 @@
+import {firestoreDeliveries} from './webhook-deliveries.mjs';
 import { GoogleAuth } from 'google-auth-library';
 import { createHandler } from './handler.mjs';
 import {Firestore} from '@google-cloud/firestore';
@@ -13,7 +14,7 @@ export function deploymentTarget(project, dataset) {
   return target;
 }
 
-export function createServiceHandler(env = process.env) {
+export function createServiceHandler(env = process.env, {deliveryStore, publicationAllowance} = {}) {
   const target = deploymentTarget(env.GOOGLE_CLOUD_PROJECT, env.SANITY_DATASET);
   if (target.dataset === 'staging' && env.CONTACT_RECIPIENT !== 'keenanvandeusen@gmail.com') {
     throw new Error('Staging delivery must use the test inbox');
@@ -31,6 +32,7 @@ export function createServiceHandler(env = process.env) {
     sanityDataset: env.SANITY_DATASET,
   };
   const auth = new GoogleAuth({ scopes: ['https://www.googleapis.com/auth/cloud-platform'] });
+  const allowPublication = publicationAllowance || firestoreAllowance(new Firestore({projectId: config.project}), 'publication');
   async function post(url, authorization, body, extraHeaders = {}) {
     const response = await fetch(url, {
       method: 'POST', signal: AbortSignal.timeout(10_000),
@@ -43,6 +45,7 @@ export function createServiceHandler(env = process.env) {
 
   return createHandler({
     config,
+    deliveryStore: deliveryStore || firestoreDeliveries(new Firestore({projectId: config.project})),
     // Never silently fall back to process-local counters in a cloud deployment.
     protection: contactProtection(firestoreAllowance(new Firestore({projectId: config.project}), 'contact')),
     async assess(token, userAgent) {
@@ -70,6 +73,12 @@ export function createServiceHandler(env = process.env) {
         });
         if (suppressed) return;
       }
+      // A valid signature does not authorize unlimited build expenditure.
+      // Fail retryably instead of acknowledging a publication we did not queue.
+      if (!await allowPublication([
+        {key: 'dispatch-hour', limit: 120, duration: 3_600_000},
+        {key: 'dispatch-day', limit: 500, duration: 86_400_000},
+      ])) throw new Error('Publication dispatch allowance exhausted');
       await post(`https://api.github.com/repos/KeenanV/meg-website/actions/workflows/${target.workflow}/dispatches`,
         `Bearer ${config.githubToken}`, { ref: target.branch, inputs: {deployment_type: 'content'} }, {
           Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',

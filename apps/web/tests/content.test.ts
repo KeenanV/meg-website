@@ -31,8 +31,8 @@ test('normal website, email, and local links remain usable', () => {
   assert.doesNotMatch(portableTextToHtml(paragraph('Fees', '#fees')), /target=/);
 });
 test('rich text and URL attributes escape markup instead of creating executable HTML', () => {
-  const html = portableTextToHtml(paragraph('<script>alert("x")</script>', 'https://example.com/"onmouseover="alert(1)'));
-  assert.doesNotMatch(html, /<script|href="[^"]*"onmouseover=/);
+  const html = portableTextToHtml(paragraph('<script>alert("x")</script><SCRIPT>alert("y")</SCRIPT>', 'https://example.com/"onmouseover="alert(1)'));
+  assert.doesNotMatch(html, /<script\b|href="[^"]*"onmouseover=/i);
   assert.match(html, /&lt;script&gt;/);
   assert.match(html, /&quot;/);
 });
@@ -40,7 +40,7 @@ test('image alt text is escaped, while missing and malformed assets are skipped'
   const value: RichText = [{ _type: 'image', asset: { _ref: 'image-example-600x400-jpg' }, alt: '"><script>alert(1)</script>' }];
   const html = portableTextToHtml(value, () => 'https://cdn.sanity.io/image.jpg?w=600&h=400');
   assert.match(html, /alt="&quot;&gt;&lt;script&gt;/);
-  assert.doesNotMatch(html, /<script>/);
+  assert.doesNotMatch(html, /<script\b/i);
   assert.equal(portableTextToHtml(value, () => { throw new Error('Invalid asset'); }), '');
   assert.equal(portableTextToHtml(value, () => 'javascript:alert(1)'), '');
   assert.equal(portableTextToHtml(value), '');

@@ -1,4 +1,5 @@
 """One-time editorial infrastructure. Secrets travel over stdin, never logs or Git."""
+import argparse
 import json
 import os
 import secrets
@@ -9,6 +10,9 @@ ROOT = Path(__file__).resolve().parent.parent
 ENV = {**os.environ, 'CLOUDSDK_PYTHON': '/opt/homebrew/bin/python3.14',
        'PATH': '/Users/keenanv/.nvm/versions/node/v24.21.0/bin:' + os.environ['PATH']}
 ACCOUNT = 'keenanvandeusen@gmail.com'
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--restrict-sync-launcher', action='store_true', help='After deploying the fixed queue worker, remove gateway job-override permission.')
+args = parser.parse_args()
 
 def cloud(*args, data=None, optional=False):
     result = subprocess.run(['gcloud', *args, '--account=' + ACCOUNT, '--quiet'],
@@ -18,9 +22,22 @@ def cloud(*args, data=None, optional=False):
         raise RuntimeError('Cloud operation failed: ' + ' '.join(args[:3]))
     return result
 
-def token(label, role):
+# Restriction mode deliberately performs no provisioning or credential changes.
+if args.restrict_sync_launcher:
+    project = 'megvandeusen-staging'
+    cloud('run', 'jobs', 'add-iam-policy-binding', 'studio-content-sync', '--region=us-west1', '--project=' + project,
+          '--member=serviceAccount:staging-website@' + project + '.iam.gserviceaccount.com', '--role=roles/run.jobsExecutor')
+    policy = json.loads(cloud('projects', 'get-iam-policy', project, '--format=json').stdout)
+    member = 'serviceAccount:staging-website@' + project + '.iam.gserviceaccount.com'
+    if any(b['role'] == 'roles/run.jobsExecutorWithOverrides' and member in b.get('members', []) for b in policy.get('bindings', [])):
+        cloud('projects', 'remove-iam-policy-binding', project, '--member=' + member,
+              '--role=roles/run.jobsExecutorWithOverrides', '--condition=None')
+    print('Fixed-worker execution granted; project override grant removed.', flush=True)
+    raise SystemExit(0)
+
+def token(label, role, project_id):
     result = subprocess.run(['./node_modules/.bin/sanity', 'tokens', 'create', label,
-                             '--role=' + role, '--expires-at=2027-10-09', '--yes', '--json'],
+                             '--role=' + role, '--project-id=' + project_id, '--expires-at=2027-04-17', '--yes', '--json'],
                             cwd=ROOT / 'apps/studio', env=ENV, capture_output=True, text=True)
     if result.returncode:
         raise RuntimeError('Sanity token creation failed; sign in to the Sanity CLI.')
@@ -48,14 +65,15 @@ def binding(project, member, role):
 
 def bucket_role(bucket, member, role):
     cloud('storage', 'buckets', 'add-iam-policy-binding', 'gs://' + bucket,
-          '--member=serviceAccount:' + member, '--role=' + role)
+          '--member=serviceAccount:' + member, '--role=' + role, '--condition=None')
 
 for project in ['megvandeusen-staging', 'megvandeusen-website']:
     preview = f'editorial-preview@{project}.iam.gserviceaccount.com'
     if cloud('iam', 'service-accounts', 'describe', preview, '--project=' + project, optional=True).returncode:
         cloud('iam', 'service-accounts', 'create', 'editorial-preview', '--project=' + project,
               '--display-name=Private Studio draft preview')
-    secret(project, 'sanity-preview-token', lambda: token(project + ' draft preview', 'viewer'), [preview])
+    secret(project, 'sanity-staging-v2-preview' if project.endswith('staging') else 'sanity-preview-token',
+           lambda: token(project + ' draft preview', 'viewer', '77uvsyo1' if project.endswith('staging') else 'ap0mc9ri'), [preview])
     secret(project, 'preview-session-secret', lambda: secrets.token_urlsafe(48), [preview])
     bucket_role(project + '-resources', preview, 'roles/storage.objectViewer')
     cloud('iam', 'service-accounts', 'add-iam-policy-binding', preview, '--project=' + project,
@@ -69,8 +87,7 @@ worker = 'studio-content-sync@' + project + '.iam.gserviceaccount.com'
 if cloud('iam', 'service-accounts', 'describe', worker, '--project=' + project, optional=True).returncode:
     cloud('iam', 'service-accounts', 'create', 'studio-content-sync', '--project=' + project,
           '--display-name=Production-read staging-write content copier')
-secret(project, 'sanity-production-read-token', lambda: token('Studio sync production read', 'viewer'), [worker])
-secret(project, 'sanity-staging-write-token', lambda: token('Studio sync staging writer', 'editor'), [worker])
+secret(project, 'sanity-staging-v2-writer', lambda: token('Studio sync staging writer', 'editor', '77uvsyo1'), [worker])
 cloud('secrets', 'add-iam-policy-binding', 'github-workflow-token', '--project=' + project,
       '--member=serviceAccount:' + worker, '--role=roles/secretmanager.secretAccessor')
 binding(project, worker, 'roles/datastore.user')
@@ -85,5 +102,4 @@ cloud('storage', 'buckets', 'update', 'gs://megvandeusen-staging-editorial', '--
 bucket_role('megvandeusen-staging-editorial', worker, 'roles/storage.objectUser')
 cloud('iam', 'service-accounts', 'add-iam-policy-binding', worker, '--project=' + project,
       '--member=serviceAccount:github-hosting@' + project + '.iam.gserviceaccount.com', '--role=roles/iam.serviceAccountUser')
-binding(project, 'staging-website@' + project + '.iam.gserviceaccount.com', 'roles/run.jobsExecutorWithOverrides')
-print('Staging sync identity, private backups, and job-launch permissions ready.', flush=True)
+print('Launcher IAM unchanged. Use --restrict-sync-launcher after deploying the compatible fixed worker.', flush=True)

@@ -40,7 +40,8 @@ For a separate tab, choose **Open private preview** from the document actions
 menu. This creates a fresh authenticated handoff for that tab. Refresh a separate
 tab after editing; the embedded Preview tool handles draft refreshes automatically.
 
-The separate staging Studio remains at https://megvandeusen-staging.sanity.studio
+After the security-hardening migration, the separate staging Studio is at
+https://meg-website-staging.sanity.studio
 for code/schema testing. Each Studio's Preview reads its own dataset. Full code
 deployments update the corresponding renderer; ordinary publications do not
 rebuild it. New draft slugs, listing pages, homepage references and private
@@ -80,7 +81,10 @@ Sanity system documents and unused asset objects are retained. Code stays on the
 staging branch. A reset is a content reset, not an infrastructure reset.
 
 Both modes back up staging documents, Sanity image/file bytes, and referenced
-private audio before replacing documents. Imported images keep their content IDs;
+private audio before replacing documents. Public production images may be
+re-encoded by Sanity during copying; their new asset references are remapped and
+included in the verified sync baseline. Backup recovery uses authenticated raw
+asset bytes and checks their original content IDs;
 recordings are copied to immutable staging object names, checked by size/CRC32C,
 and pinned to the destination generation. The active catalog reads staging's own
 bucket, never production's. Legacy public-audio fields are not reintroduced.
@@ -137,7 +141,8 @@ backup is a recovery mechanism, not a substitute for review.
 One-time setup: `python3 scripts/provision-editorial.py`. It creates preview
 identities, Secret Manager entries, a staging-only copier identity and a private,
 versioned backup bucket. It reuses existing secrets. Tokens created by this setup
-expire **2027-10-09**; rotate them in Secret Manager before then. No secrets are
+expire **2027-04-17**; rotate them in Secret Manager before then. Existing tokens
+keep their own expiry until rotated. No secrets are
 printed by the script or included in source build contexts.
 
 `node scripts/deploy-editorial.mjs staging|production` deploys the preview renderer.
@@ -145,13 +150,19 @@ Staging also builds/deploys the copy worker. `--worker-only` and `--preview-only
 support isolated testing. Full GitHub deployments run this script; content-only
 deployments continue to skip Studio and renderer builds.
 
-Cloud storage permissions separate production read from staging write. Sanity's
-standard editor token is project-scoped on the current plan: the staging writer
-must be treated as a sensitive credential, even though the worker's transport
-hardcodes staging writes and rejects production mutations. A future plan with
-custom dataset-scoped roles could further restrict that token at the provider
-level. No such token is placed in Studio's JavaScript or browser storage.
+Cloud storage permissions separate production read from staging write. The
+staging Sanity writer, preview reader and Studio deployer belong to a separate
+Sanity project. The copier reads published production CMS content anonymously;
+it has no production Sanity credential. Private production audio remains readable
+by the copier so it can duplicate recordings into staging. No robot token is
+placed in Studio's JavaScript or browser storage.
 
-Review backup retention/storage periodically; the initial setup preserves backups
-and object versions until a deliberate retention policy is agreed and configured.
+The free staging CMS remains public: its reviewer password protects the rendered
+website and private audio, not published Sanity text or CDN images. Keep
+unpublished/confidential work in production drafts and authenticated Preview.
+See SECURITY_OPERATIONS.md for the ordered migration, retirement of old tokens,
+post-deployment job permission restriction, and verification requirements.
+
+Review backup retention/storage using the policy in SECURITY_OPERATIONS.md;
+preserve all media referenced by drafts, published documents or retained backups.
 This deployment does not introduce always-running instances or Cloud Armor.

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { isValidSignature, SIGNATURE_HEADER_NAME } from '@sanity/webhook';
+import { isValidSignature, decodeSignatureHeader, SIGNATURE_HEADER_NAME } from '@sanity/webhook';
+import {memoryDeliveries} from './webhook-deliveries.mjs';
 import {contactProtection, memoryAllowance, localBurst} from './abuse.mjs';
 
 const hash = value => createHash('sha256').update(value).digest('hex');
@@ -49,11 +50,9 @@ function contactData(value) {
 }
 
 export function createHandler({ config, assess, sendEmail, dispatch, now = Date.now, log = console.info,
-  protection = contactProtection(memoryAllowance(now)) }) {
+  protection = contactProtection(memoryAllowance(now)), deliveryStore = memoryDeliveries(now) }) {
   const allow = limiter(now);
   const requestBurst = localBurst(60, 60_000, now);
-  const deliveries = new Map();
-  const pending = new Map();
 
   return async (request, response) => {
     response.setHeader('Cache-Control', 'no-store');
@@ -108,18 +107,16 @@ export function createHandler({ config, assess, sendEmail, dispatch, now = Date.
           || event.id.startsWith('drafts.') || event.id.startsWith('versions.')
           || !['create', 'update', 'delete'].includes(event.operation)) return reply(400, 'Unexpected content event.');
 
-        // Dedupe the signed body, not an unauthenticated request header. Only remember accepted dispatches.
+        const {timestamp} = decodeSignatureHeader(request.headers[SIGNATURE_HEADER_NAME]);
+        // Sanity retries twice at 30-second intervals. Ten minutes also allows
+        // normal queue delay; manual redelivery must carry a fresh signature.
+        if (timestamp < now() - 600_000 || timestamp > now() + 60_000) return reply(401, 'Expired signature.');
         const key = hash(raw);
-        for (const [id, expiry] of deliveries) if (expiry <= now()) deliveries.delete(id);
-        if (!deliveries.has(key)) {
-          if (!pending.has(key)) {
-            pending.set(key, (async () => {
-              await dispatch(event);
-              if (deliveries.size >= 2048) deliveries.delete(deliveries.keys().next().value);
-              deliveries.set(key, now() + 86_400_000);
-            })().finally(() => pending.delete(key)));
-          }
-          await pending.get(key);
+        const claim = await deliveryStore.claim(key);
+        if (claim === 'busy') return reply(503, 'Delivery is already being processed. Retry shortly.');
+        if (claim !== 'complete') {
+          try {await dispatch(event); await deliveryStore.complete(key, claim);}
+          catch (error) {await deliveryStore.release(key, claim); throw error;}
         }
         return reply(202, 'Rebuild queued.');
       }

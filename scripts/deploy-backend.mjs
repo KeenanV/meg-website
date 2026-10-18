@@ -2,8 +2,10 @@ import {accountFlags, gcloud, run} from './cloud-cli.mjs';
 import { fileURLToPath } from 'node:url';
 
 process.chdir(fileURLToPath(new URL('../', import.meta.url)));
-run('npm', ['run', 'check', '--prefix', 'apps/backend']);
-run('npm', ['test', '--prefix', 'apps/backend']);
+if (!process.argv.includes('--verified')) {
+  run('npm', ['run', 'check', '--prefix', 'apps/backend']);
+  run('npm', ['test', '--prefix', 'apps/backend']);
+}
 // Contact throttling must persist across instances; never deploy without storage.
 run(gcloud, ['firestore', 'databases', 'describe', '--database=(default)',
   '--project=megvandeusen-website', ...accountFlags, '--format=value(name)', '--quiet']);

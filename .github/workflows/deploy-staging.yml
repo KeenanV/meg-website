@@ -20,29 +20,30 @@ concurrency:
   group: firebase-staging-release
   cancel-in-progress: false
 
+env:
+  PUBLIC_SANITY_PROJECT_ID: 77uvsyo1
+  PUBLIC_SANITY_DATASET: staging
+  SANITY_STUDIO_DATASET: staging
+  PUBLIC_SITE_ENV: staging
+  SITE_URL: https://staging.megvandeusen.com
+  PUBLIC_CONTACT_API_URL: /contact
+  PUBLIC_RECAPTCHA_SITE_KEY: 6LcV5OAtAAAAADfiaVU7IvCdAl3noMMqn14man3F
+  GOOGLE_CLOUD_QUOTA_PROJECT: megvandeusen-staging
+
 jobs:
-  deploy:
+  build:
     if: github.ref == 'refs/heads/staging'
-    environment:
-      name: Staging
-      url: https://staging.megvandeusen.com
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 30
     permissions:
       contents: read
       actions: read
-      id-token: write
-    env:
-      PUBLIC_SANITY_PROJECT_ID: ap0mc9ri
-      PUBLIC_SANITY_DATASET: staging
-      SANITY_STUDIO_DATASET: staging
-      PUBLIC_SITE_ENV: staging
-      SITE_URL: https://staging.megvandeusen.com
-      PUBLIC_CONTACT_API_URL: /contact
-      PUBLIC_RECAPTCHA_SITE_KEY: ${{ vars.RECAPTCHA_SITE_KEY }}
-      GOOGLE_CLOUD_QUOTA_PROJECT: megvandeusen-staging
+    outputs:
+      mode: ${{ steps.publishing.outputs.mode }}
+      artifact: ${{ steps.upload.outputs.artifact-id }}
+      sha256: ${{ steps.archive.outputs.sha256 }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - name: Select safe publishing path
@@ -55,28 +56,77 @@ jobs:
       - uses: ./.github/actions/setup-project
         with:
           content-only: ${{ steps.publishing.outputs.mode == 'content' }}
-      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
-        with:
-          project_id: megvandeusen-staging
-          workload_identity_provider: projects/76495183695/locations/global/workloadIdentityPools/github/providers/meg-website
-          service_account: github-hosting@megvandeusen-staging.iam.gserviceaccount.com
-      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
-      - name: Coordinate with Studio content refreshes
-        id: operation_lock
-        run: node scripts/staging-deployment-lock.mjs acquire
+      - name: Capture published content revision
+        run: node scripts/content-snapshot.mjs capture
       - if: steps.publishing.outputs.mode == 'full'
         run: npm run verify
       - if: steps.publishing.outputs.mode == 'content'
         run: npm run verify:content
-      - name: Deploy private editorial preview and staging sync worker
+      - name: Build private preview without cloud credentials
         if: steps.publishing.outputs.mode == 'full'
-        run: node scripts/deploy-editorial.mjs staging
-      - name: Deploy staging Studio
-        if: steps.publishing.outputs.mode == 'full'
-        working-directory: apps/studio
         env:
-          SANITY_AUTH_TOKEN: ${{ secrets.SANITY_DEPLOY_TOKEN }}
-        run: npx --no-install sanity deploy --yes --schema-required
+          EDITORIAL_PREVIEW: 'true'
+        run: npm run build --prefix apps/web
+      - name: Reject mixed content snapshots
+        run: node scripts/content-snapshot.mjs check
+      - name: Package verified output
+        id: archive
+        env:
+          DEPLOYMENT_TYPE: ${{ steps.publishing.outputs.mode }}
+        run: node scripts/deployment-artifact.mjs pack
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        id: upload
+        with:
+          name: deployment-output
+          path: .private/deploy-artifact.tar.gz
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy:
+    needs: build
+    environment:
+      name: Staging
+      url: https://staging.megvandeusen.com
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact }}
+          path: .private
+          merge-multiple: true
+      - name: Verify artifact identity before extraction
+        env:
+          EXPECTED_ARTIFACT_SHA: ${{ needs.build.outputs.sha256 }}
+        run: node scripts/deployment-artifact.mjs unpack
+      - name: Install locked deployment tools without lifecycle scripts
+        run: |
+          npm ci --ignore-scripts
+          npm ci --ignore-scripts --prefix apps/backend
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          project_id: megvandeusen-staging
+          workload_identity_provider: projects/76495183695/locations/global/workloadIdentityPools/github/providers/meg-website
+          service_account: github-hosting@megvandeusen-staging.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+      - name: Coordinate with Studio content refreshes
+        id: operation_lock
+        run: node scripts/staging-deployment-lock.mjs acquire
+      - name: Check content under the staging deployment lock
+        run: node scripts/content-snapshot.mjs check
+      - name: Deploy private editorial preview and staging sync worker
+        if: needs.build.outputs.mode == 'full'
+        run: node scripts/deploy-editorial.mjs staging --built
       - name: Deploy protected staging site and backend
         run: node scripts/deploy-staging.mjs --built --verified
       - name: Verify staging access controls and CAPTCHA enforcement
@@ -87,5 +137,37 @@ jobs:
         if: always() && steps.operation_lock.outcome == 'success'
         run: node scripts/staging-deployment-lock.mjs release
       - name: Full deployment completed
-        if: steps.publishing.outputs.mode == 'full'
+        if: needs.build.outputs.mode == 'full'
         run: echo 'Full staging code deployment completed.'
+
+  studio:
+    needs: [build, deploy]
+    if: needs.build.outputs.mode == 'full'
+    environment: Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact }}
+          path: .private
+          merge-multiple: true
+      - name: Verify artifact identity before extraction
+        env:
+          EXPECTED_ARTIFACT_SHA: ${{ needs.build.outputs.sha256 }}
+        run: node scripts/deployment-artifact.mjs unpack
+      - name: Install locked Studio deployment tools without lifecycle scripts
+        run: npm ci --ignore-scripts --prefix apps/studio
+      - name: Deploy prebuilt Studio without cloud identity
+        working-directory: apps/studio
+        env:
+          SANITY_AUTH_TOKEN: ${{ secrets.SANITY_ISOLATED_DEPLOY_TOKEN }}
+        run: npx --no-install sanity deploy --yes --no-build --schema-required

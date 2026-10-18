@@ -10,26 +10,26 @@ import {Storage} from '@google-cloud/storage';
 import {CONTENT_TYPES, contentDocument} from './content-sync.mjs';
 import {privateAudioKey} from './studio-upload.mjs';
 
-const project = 'ap0mc9ri';
+const projects = {production: 'ap0mc9ri', staging: '77uvsyo1'};
 const version = 'v2025-10-26';
-export function syncStorage({id, sourceToken, targetToken, db, storage = new Storage({projectId: 'megvandeusen-staging'})}) {
-  if (!sourceToken || !targetToken || !/^[a-f0-9-]{36}$/.test(id)) throw new Error('Sync credentials required');
+export function syncStorage({id, targetToken, db, storage = new Storage({projectId: 'megvandeusen-staging'}), fetch: request = globalThis.fetch}) {
+  if (!targetToken || !/^[a-f0-9-]{36}$/.test(id)) throw new Error('Sync credentials required');
   const production = storage.bucket('megvandeusen-website-resources');
   const staging = storage.bucket('megvandeusen-staging-resources');
   const backup = storage.bucket('megvandeusen-staging-editorial');
   async function sanity(dataset, route, options = {}) {
     // This is the only Sanity transport used by the worker. Production is GET-only.
     if (!['production', 'staging'].includes(dataset) || (dataset === 'production' && options.method && options.method !== 'GET')) throw new Error('Production is read-only');
-    const response = await fetch(`https://${project}.api.sanity.io/${version}/${route}`, {
+    const response = await request(`https://${projects[dataset]}.api.sanity.io/${version}/${route}`, {
       ...options, redirect: 'error', signal: AbortSignal.timeout(120_000),
-      headers: {...options.headers, Authorization: `Bearer ${dataset === 'production' ? sourceToken : targetToken}`},
+      headers: {...options.headers, ...(dataset === 'staging' ? {Authorization: `Bearer ${targetToken}`} : {})},
     });
     if (!response.ok) throw new Error('Sanity operation failed');
     return response.json();
   }
   async function read(dataset) {
     const query = `*[_type in ${JSON.stringify([...CONTENT_TYPES, 'sanity.imageAsset', 'sanity.fileAsset'])}]`;
-    return (await sanity(dataset, `data/query/${dataset}?perspective=raw&query=${encodeURIComponent(query)}`)).result;
+    return (await sanity(dataset, `data/query/${dataset}?perspective=${dataset === 'production' ? 'published' : 'raw'}&query=${encodeURIComponent(query)}`)).result;
   }
   async function json(name, value) {
     await backup.file(`sync/${id}/${name}.json`).save(JSON.stringify(value), {resumable: false,
@@ -37,17 +37,18 @@ export function syncStorage({id, sourceToken, targetToken, db, storage = new Sto
   }
   async function downloadAsset(asset, dataset) {
     const url = new URL(asset.url);
-    if (url.origin !== 'https://cdn.sanity.io' || !url.pathname.startsWith(`/${asset._type === 'sanity.imageAsset' ? 'images' : 'files'}/${project}/${dataset}/`)) throw new Error('Invalid asset origin');
-    // The image CDN may re-encode a normal URL. Original bytes are required
-    // to preserve content-addressed asset IDs and make backups restorable.
+    if (url.origin !== 'https://cdn.sanity.io' || !url.pathname.startsWith(`/${asset._type === 'sanity.imageAsset' ? 'images' : 'files'}/${projects[dataset]}/${dataset}/`)) throw new Error('Invalid asset origin');
+    // Backups need authenticated original staging bytes. Production uses its
+    // public rendition; remap content-addressed refs after uploading it.
     url.search = '';
-    url.searchParams.set('dlRaw', '1');
-    const response = await fetch(url, {redirect: 'error', signal: AbortSignal.timeout(120_000),
-      headers: {Authorization: `Bearer ${dataset === 'production' ? sourceToken : targetToken}`}});
+    url.searchParams.set(dataset === 'staging' ? 'dlRaw' : 'dl', '1');
+    const response = await request(url, {redirect: 'error', signal: AbortSignal.timeout(120_000),
+      headers: dataset === 'staging' ? {Authorization: `Bearer ${targetToken}`} : {}});
     if (!response.ok || !response.body) throw new Error('Asset download failed');
     return response;
   }
   let source, copied = new Set();
+  const mappedAssets = new Map();
   return {
     readSource: async () => {source = await read('production'); return source;},
     readTarget: () => read('staging'),
@@ -73,15 +74,19 @@ export function syncStorage({id, sourceToken, targetToken, db, storage = new Sto
     async copyDocument(doc) {
       async function assets(value) {
         if (!value || typeof value !== 'object') return;
-        if (value._type === 'reference' && /^(image|file)-/.test(value._ref) && !copied.has(value._ref)) {
-          const asset = source.find(item => item._id === value._ref);
-          if (!asset) throw new Error('Production asset missing');
-          const response = await downloadAsset(asset, 'production');
-          const kind = asset._type === 'sanity.imageAsset' ? 'images' : 'files';
-          const result = await sanity('staging', `assets/${kind}/staging`, {method: 'POST', duplex: 'half', body: response.body,
-            headers: {'Content-Type': asset.mimeType || 'application/octet-stream'}});
-          if (result.document?._id !== value._ref) throw new Error('Asset content hash changed');
-          copied.add(value._ref);
+        if (value._type === 'reference' && /^(image|file)-/.test(value._ref)) {
+          const sourceRef = value._ref;
+          if (!mappedAssets.has(sourceRef)) {
+            const asset = source.find(item => item._id === sourceRef);
+            if (!asset) throw new Error('Production asset missing');
+            const response = await downloadAsset(asset, 'production');
+            const kind = asset._type === 'sanity.imageAsset' ? 'images' : 'files';
+            const result = await sanity('staging', `assets/${kind}/staging`, {method: 'POST', duplex: 'half', body: response.body,
+              headers: {'Content-Type': asset.mimeType || 'application/octet-stream'}});
+            if (typeof result.document?._id !== 'string' || !/^(image|file)-/.test(result.document._id)) throw new Error('Asset copy failed');
+            mappedAssets.set(sourceRef, result.document._id);
+          }
+          value._ref = mappedAssets.get(sourceRef);
         }
         for (const child of Object.values(value)) await assets(child);
       }
