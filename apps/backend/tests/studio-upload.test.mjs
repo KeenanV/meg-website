@@ -12,6 +12,7 @@ test('only verified human editors of this Sanity project may upload', async () =
     ['administrator', 'ap0mc9ri', 'someone-else', false],
   ]) {
     const request = async url => {
+      if (new URL(url).hostname === 'api.sanity.io') return {ok: false, status: 401};
       assert.equal(new URL(url).hostname, 'ap0mc9ri.api.sanity.io');
       return {ok: true, json: async () => url.endsWith('/users/me') ? {id: 'editor'} : {
       id: project, members: [{id: user, isRobot: false, roles: [{name: role}]}],
@@ -21,6 +22,7 @@ test('only verified human editors of this Sanity project may upload', async () =
   }
   assert.equal(await sanityEditor('', 'ap0mc9ri'), null);
   assert.equal(await sanityEditor('test-token-long-enough', 'ap0mc9ri', async () => ({ok: false})), null);
+  assert.equal(await sanityEditor('global-token-long-enough', '77uvsyo1', async () => ({ok: true, status: 200})), null);
 });
 
 test('upload API rejects anonymous, cross-environment, oversized, and cross-origin requests', async t => {

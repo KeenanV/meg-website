@@ -7,6 +7,7 @@ import {Firestore} from '@google-cloud/firestore';
 import {firestoreAllowance} from './abuse.mjs';
 import {bucketUploads, sanityEditor, studioUploadHandler} from './studio-upload.mjs';
 import {studioSyncApi, cloudSyncLauncher} from './studio-sync-api.mjs';
+import {SYNC_BROKER_ORIGIN, syncVerifier, firestoreSyncClaim, syncAuthorization} from './sync-capability.mjs';
 
 if (process.env.GOOGLE_CLOUD_PROJECT !== 'megvandeusen-staging') throw new Error('Staging server requires the staging project.');
 const secret = JSON.parse(process.env.STAGING_ACCESS || '{}');
@@ -21,8 +22,10 @@ const studio = studioUploadHandler({dataset: 'staging',
   allow: firestoreAllowance(db, 'studio'),
 });
 const sync = process.env.STUDIO_SYNC_ENABLED === 'true' ? studioSyncApi({db,
-  origins: ['http://localhost:3333', 'http://localhost:3334', 'https://megvandeusen.sanity.studio', 'https://meg-website-staging.sanity.studio'],
-  authorize: async token => await sanityEditor(token, '77uvsyo1') || await sanityEditor(token, 'ap0mc9ri'), launch: cloudSyncLauncher(),
+  origins: ['http://localhost:3334', 'https://meg-website-staging.sanity.studio', SYNC_BROKER_ORIGIN],
+  authorize: syncAuthorization({editor: token => sanityEditor(token, '77uvsyo1'),
+    capability: process.env.SYNC_BROKER_PUBLIC_KEY ? syncVerifier(process.env.SYNC_BROKER_PUBLIC_KEY, firestoreSyncClaim(db)) : null}),
+  launch: cloudSyncLauncher(),
 }) : undefined;
 let maintenanceCache = {expires: 0, value: false};
 async function maintenance() {

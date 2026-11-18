@@ -6,6 +6,8 @@ import {Storage} from '@google-cloud/storage';
 import {Firestore} from '@google-cloud/firestore';
 import {firestoreAllowance} from './abuse.mjs';
 import {bucketUploads, sanityEditor, studioUploadHandler} from './studio-upload.mjs';
+import {syncSigner} from './sync-capability.mjs';
+import {studioSyncBroker} from './studio-sync-broker.mjs';
 
 const project = 'megvandeusen-website';
 if (process.env.GOOGLE_CLOUD_PROJECT !== project) throw new Error('Production server requires the production project');
@@ -25,7 +27,10 @@ if (process.env.RESOURCES_ACCESS) {
     allow: firestoreAllowance(db, 'studio'),
   });
 }
-const handler = productionGateway({service: createServiceHandler(), resources, studio});
+const sync = studioSyncBroker({authorize: token => sanityEditor(token, 'ap0mc9ri'),
+  issue: process.env.SYNC_BROKER_PRIVATE_KEY ? syncSigner(process.env.SYNC_BROKER_PRIVATE_KEY) : null,
+  allow: firestoreAllowance(new Firestore({projectId: project}), 'studio-sync-broker')});
+const handler = productionGateway({service: createServiceHandler(), resources, studio, sync});
 
 const server = createServer({ maxHeaderSize: 16_384, requestTimeout: 20_000, headersTimeout: 15_000 }, handler);
 server.listen(Number(process.env.PORT || 8080), '0.0.0.0');

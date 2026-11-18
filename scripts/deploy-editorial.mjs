@@ -16,7 +16,7 @@ async function context(kind) {
   const directory = await mkdtemp(path.join(root, `.private/editorial-${kind}-`));
   const files = ['apps/backend/package.json', 'apps/backend/package-lock.json', 'apps/backend/src'];
   if (kind === 'preview') files.push('apps/web/package.json', 'apps/web/package-lock.json', 'apps/web/dist-preview', 'apps/web/editorial');
-  else files.push('shared', ...['package.json', 'package-lock.json', 'sanity.config.ts', 'sanity.cli.ts', 'structure.ts', 'presentation.ts', 'preview-handoff.ts', 'schemas', 'components'].map(file => 'apps/studio/' + file));
+  else files.push('shared', ...['package.json', 'package-lock.json', 'sanity.config.ts', 'sanity.cli.ts', 'structure.ts', 'presentation.ts', 'preview-handoff.ts', 'sync-endpoint.mjs', 'sync-endpoint.d.mts', 'schemas', 'components'].map(file => 'apps/studio/' + file));
   for (const file of files) {await mkdir(path.dirname(path.join(directory, file)), {recursive: true}); await cp(file, path.join(directory, file), {recursive: true});}
   await cp(`editorial/${kind}.Dockerfile`, path.join(directory, 'Dockerfile'));
   await writeFile(path.join(directory, '.gcloudignore'), 'node_modules\n**/node_modules\n.env*\n**/.env*\n*.log\n');
