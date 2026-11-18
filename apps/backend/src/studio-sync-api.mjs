@@ -29,18 +29,19 @@ export function studioSyncApi({db, authorize, origins, launch, allowance = fires
     res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Methods', 'POST');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Sanity-Token');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Sanity-Token, X-Sync-Capability');
       res.writeHead(204); return res.end();
     }
     if (req.method !== 'POST' || !/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) return reply(405, {message: 'Use JSON POST.'});
     if (!burst()) return reply(429, {message: 'Please wait a moment.'});
     try {
-      const owner = await authorize(req.headers['x-sanity-token']);
-      if (!owner) return reply(403, {message: 'An authorized Sanity editor session is required.'});
       let raw = '';
       for await (const chunk of req) {raw += chunk.toString(); if (Buffer.byteLength(raw) > 2048) return reply(413, {message: 'Request too large.'});}
       let body;
       try {body = JSON.parse(raw);} catch {return reply(400, {message: 'Invalid request.'});}
+      if (!body || typeof body !== 'object' || Array.isArray(body)) return reply(400, {message: 'Invalid request.'});
+      const owner = await authorize(req.headers['x-sanity-token'], req, raw);
+      if (!owner) return reply(403, {message: 'An authorized editor session or sync capability is required.'});
       const route = new URL(req.url, 'http://localhost').pathname;
       if (route === '/api/studio/sync/plan') {
         if (!['update', 'reset'].includes(body.mode)) return reply(400, {message: 'Choose update or reset.'});

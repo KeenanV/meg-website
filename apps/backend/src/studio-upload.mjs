@@ -12,6 +12,10 @@ export async function sanityEditor(token, project, request = fetch) {
   if (typeof token !== 'string' || token.length < 16 || token.length > 8192 || /\s/.test(token)) return null;
   if (!/^[a-z0-9]+$/.test(project)) return null;
   const options = {headers: {Authorization: `Bearer ${token}`}, redirect: 'error', signal: AbortSignal.timeout(8000)};
+  // Reject global Dashboard/CLI credentials even when that human belongs to
+  // this project. Only a project-scoped Studio session may reach these APIs.
+  const global = await request('https://api.sanity.io/v2025-10-26/users/me', options);
+  if (![401, 403].includes(global.status)) return null;
   // Studio sessions are project-scoped; the global API rejects these tokens.
   const base = `https://${project}.api.sanity.io`;
   const response = await request(`${base}/v2025-10-26/users/me`, options);

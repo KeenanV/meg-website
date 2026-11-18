@@ -1,14 +1,15 @@
 import {useCallback, useEffect, useState} from 'react';
 import {useClient, useSource} from 'sanity';
+import {syncEndpoint} from '../sync-endpoint.mjs';
 
 type Plan = {labels: Record<string, string>; add: string[]; update: string[]; remove: string[]; retained: string[]; unchanged: string[]; conflicts: {id: string; reason: string}[]};
 type Run = {id: string; mode: 'update' | 'reset'; status: string; message: string; plan?: Plan};
-const endpoint = 'https://megvandeusen-staging.web.app/api/studio/sync';
 const pending = new Set(['queued', 'queued-apply', 'planning', 'applying', 'copied']);
 
 export function StagingSyncTool() {
   const client = useClient({apiVersion: '2025-10-26'});
   const source = useSource();
+  const endpoint = syncEndpoint(source.dataset);
   const [token, setToken] = useState(client.config().token || '');
   const [run, setRun] = useState<Run | null>(null);
   const [error, setError] = useState('');
@@ -28,7 +29,7 @@ export function StagingSyncTool() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || 'Unable to contact the sync service.');
     return result;
-  }, [token]);
+  }, [token, endpoint]);
   useEffect(() => {
     if (!id || !token) return;
     let stopped = false;

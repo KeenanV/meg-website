@@ -58,6 +58,8 @@ jobs:
           content-only: ${{ steps.publishing.outputs.mode == 'content' }}
       - name: Capture published content revision
         run: node scripts/content-snapshot.mjs capture
+      - name: Check current advisories and exception expiry
+        run: node scripts/check-security-audit.mjs
       - if: steps.publishing.outputs.mode == 'full'
         run: npm run verify
       - if: steps.publishing.outputs.mode == 'content'
