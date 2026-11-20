@@ -1,10 +1,11 @@
 import {useEffect, useState} from 'react';
 import {set, unset, useClient, useSource, type ObjectInputProps} from 'sanity';
+import {uploadEndpoint} from '../sync-endpoint.mjs';
 
 type Recording = {_type?: string; objectKey?: string; generation?: string; size?: number};
 const environments: Record<string, {endpoint: string; bucket: string}> = {
-  staging: {endpoint: 'https://megvandeusen-staging.web.app/api/studio/uploads', bucket: 'megvandeusen-staging-resources'},
-  production: {endpoint: 'https://megvandeusen.com/api/studio/uploads', bucket: 'megvandeusen-website-resources'},
+  staging: {endpoint: uploadEndpoint('staging'), bucket: 'megvandeusen-staging-resources'},
+  production: {endpoint: uploadEndpoint('production'), bucket: 'megvandeusen-website-resources'},
 };
 
 export function PrivateRecordingInput(props: ObjectInputProps<Recording>) {

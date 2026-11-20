@@ -21,7 +21,7 @@ private = ROOT / '.private'
 private.mkdir(mode=0o700, exist_ok=True)
 cors = private / 'staging-upload-cors.json'
 cors.write_text(json.dumps([{
-    'origin': ['http://localhost:3333', 'http://localhost:3334', 'https://megvandeusen-staging.sanity.studio'],
+    'origin': ['http://localhost:3333', 'http://localhost:3334', 'https://meg-website-staging.sanity.studio'],
     'method': ['POST'], 'responseHeader': ['Content-Type'], 'maxAgeSeconds': 600,
 }]))
 lifecycle = private / 'staging-upload-lifecycle.json'

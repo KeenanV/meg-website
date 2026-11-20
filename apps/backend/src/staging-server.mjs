@@ -5,8 +5,9 @@ import {stagingGateway} from './staging-gateway.mjs';
 import {Storage} from '@google-cloud/storage';
 import {Firestore} from '@google-cloud/firestore';
 import {firestoreAllowance} from './abuse.mjs';
-import {bucketUploads, sanityEditor, studioUploadHandler} from './studio-upload.mjs';
+import {bucketUploads, studioUploadHandler} from './studio-upload.mjs';
 import {studioSyncApi, cloudSyncLauncher} from './studio-sync-api.mjs';
+import {SYNC_BROKER_ORIGIN, syncVerifier, firestoreSyncClaim, syncAuthorization} from './sync-capability.mjs';
 
 if (process.env.GOOGLE_CLOUD_PROJECT !== 'megvandeusen-staging') throw new Error('Staging server requires the staging project.');
 const secret = JSON.parse(process.env.STAGING_ACCESS || '{}');
@@ -14,15 +15,18 @@ const resources = cloudResources({project: 'megvandeusen-staging', bucketName: '
   ...(process.env.PRIVATE_CATALOG === 'sanity' ? {sanity: {project: '77uvsyo1', dataset: 'staging'}} : {}),
   credentials: secret.resources, signingSecret: secret.resources.hash, siteKey: process.env.RECAPTCHA_SITE_KEY, origins: ['https://staging.megvandeusen.com', 'https://megvandeusen-staging.web.app', 'https://megvandeusen-staging.firebaseapp.com']});
 const db = new Firestore({projectId: 'megvandeusen-staging'});
+const authorizeStudio = syncAuthorization({capability: process.env.SYNC_BROKER_PUBLIC_KEY
+  ? syncVerifier(process.env.SYNC_BROKER_PUBLIC_KEY, firestoreSyncClaim(db)) : null});
 const studio = studioUploadHandler({dataset: 'staging',
-  origins: ['http://localhost:3333', 'http://localhost:3334', 'https://meg-website-staging.sanity.studio'],
-  authorize: token => sanityEditor(token, '77uvsyo1'),
+  origins: [SYNC_BROKER_ORIGIN], capabilityOnly: true,
+  authorize: authorizeStudio,
   uploads: bucketUploads(new Storage({projectId: 'megvandeusen-staging'}).bucket('megvandeusen-staging-resources'), db),
   allow: firestoreAllowance(db, 'studio'),
 });
 const sync = process.env.STUDIO_SYNC_ENABLED === 'true' ? studioSyncApi({db,
-  origins: ['http://localhost:3333', 'http://localhost:3334', 'https://megvandeusen.sanity.studio', 'https://meg-website-staging.sanity.studio'],
-  authorize: async token => await sanityEditor(token, '77uvsyo1') || await sanityEditor(token, 'ap0mc9ri'), launch: cloudSyncLauncher(),
+  origins: [SYNC_BROKER_ORIGIN],
+  authorize: authorizeStudio,
+  launch: cloudSyncLauncher(),
 }) : undefined;
 let maintenanceCache = {expires: 0, value: false};
 async function maintenance() {

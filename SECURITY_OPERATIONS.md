@@ -13,6 +13,20 @@ The free staging Sanity dataset is **public**. Only use content safe for public 
 
 The sync worker reads only published production CMS content anonymously. Its Sanity writer and Studio deployment credentials belong exclusively to the staging project. It retains read access to production private recordings so it can copy them into staging; this is an intentional, narrower remaining cross-environment capability.
 
+### Studio authentication and staging action authorization
+
+Both Studios' “Refresh staging” controls and staging private-upload controls authenticate only at the production backend. Hosted Sanity Dashboard sessions can authorize multiple projects: they must not be sent to the staging backend. The production-trusted broker accepts these sessions but checks human editor membership in the exact project selected by a fixed route/Origin pair. Staging Studio requires staging membership; production Studio requires production membership. The browser cannot supply an arbitrary project or upstream URL. Production private uploads authenticate directly within the production backend and require production membership.
+
+The broker signs a permission for one exact POST path/body and editor identity, valid for 30 seconds. Staging verifies the signature with a public key and atomically consumes its unique ID in Firestore. A captured upload or status permission cannot authorize a different action or body. The broker never forwards Sanity tokens or browser cookies, follows no redirects, and uses only a fixed staging destination. The production private key is not present in staging. MP3 bytes still go directly from the browser to the staging bucket using the narrowly scoped signed upload form; the broker handles only upload initiation/finalization JSON.
+
+The private staging bucket's upload CORS rule must allow the current Studio origin, `https://meg-website-staging.sanity.studio`, not the retired `megvandeusen-staging.sanity.studio` hostname. `scripts/configure-staging-uploads.py` maintains that rule. Recheck it after a Studio-host migration: a successful authorization/start response does not prove the browser can complete the direct storage upload. CORS permits the browser exchange; it does not replace the signed upload policy or make objects public.
+
+Staging rejects all direct human bearer sessions, including legitimately staging-scoped ones. This keeps the gateway independent of Sanity's choice of Dashboard versus standalone token. Test real hosted Studio flows after authentication changes, including private uploads, not only mocked token responses. A compromised Studio frontend can still steal the editor's Sanity session; the trusted broker protects the staging backend boundary, not a malicious editor browser or Studio bundle. Protect Studio deployment credentials and reviewed release artifacts accordingly.
+
+Provision once with `node scripts/configure-sync-broker.mjs --apply` using the operator's authenticated Google Cloud account. It preserves existing key versions and grants the production backend access only to the private signing secret; staging receives only a public verification secret. It enables TTL cleanup for consumed permissions. For the Dashboard-session correction, coordinate rollout: deploy the staging capability receiver, then the production-trusted broker, then both Studios. Do not publish the new staging Studio while the broker still lacks `/api/studio/staging/*`. Sync and staging private uploads fail closed during a mixed-version interval; ordinary Sanity editing/publishing is unaffected. Existing readers and protected audio playback do not use this editor authentication path. Check plan/status through both Studios and a disposable private upload before release; do not apply/reset real content as a smoke test.
+
+For emergency broker revocation, remove/disable verification at staging and stop production issuance. Rotating a key requires provisioning the matching verification key and deploying both services; do not replace one side silently. Expired permissions cannot be replayed even if Firestore TTL deletion is delayed. Network uncertainty after forwarding can still leave a plan queued: check status before retrying.
+
 ## Change the Resources password
 
 After this release is deployed:
@@ -25,7 +39,9 @@ For staging, replace `production` with `staging`. The command prompts twice with
 
 Verify the old password fails, the new one unlocks, audio plays/seeks, and locking works. Changing the password invalidates old Resources sessions. Already-issued audio URLs remain usable until their short expiry (normally up to 15 minutes). Staging Hosting is repinned and unneeded historical tags are retired automatically.
 
-Keep the old Secret Manager version only until verification is complete. Disable it afterward; keep a controlled recovery window before destroying versions. A disabled secret version does not revoke a credential already loaded into a running old revision, which is why tag retirement matters. Production backend deployment preserves the active secret reference.
+On 2026-11-18, production `resources-access` version 1 and staging `staging-access` versions 1–3 were disabled after checking every serving/tagged revision. Active versions 2 and 4 respectively remain enabled, with passwords unchanged.
+
+Keep an old Secret Manager version only until verification is complete. Disable it afterward; keep a controlled recovery window before destroying versions. A disabled secret version does not revoke a credential already loaded into a running old revision, which is why tag retirement matters. Production backend deployment preserves the active secret reference.
 
 ## Add and remove staging reviewers
 
@@ -87,20 +103,27 @@ Cleanup is deliberately a reviewed operation, not an automatic deletion of poten
 
 ## Monitoring, credentials and residual risks
 
-Security email alerts cover service errors/quota denials and unexpected deployment identities. A safe staging test confirmed email delivery on 2026-10-17. Existing $10 monthly environment budgets are alerts, not spending caps. Review Monitoring pricing before September 2027; do not assume alerts remain free indefinitely.
+Security email alerts cover service errors/quota denials and unexpected deployment identities. A safe staging test confirmed email delivery on 2026-11-18; the operator confirmed receipt. Existing $10 monthly environment budgets are alerts, not spending caps. Review Monitoring pricing before September 2027; do not assume alerts remain free indefinitely.
 
-Review GitHub secret/Dependabot/CodeQL findings weekly. New or expired npm exceptions fail the advisory gate; current unpatched exceptions expire 2026-11-16. Review pinned container digests and OS scans on every security update. A successful build does not imply a clean vulnerability scan.
+Review GitHub secret/Dependabot/CodeQL findings weekly. The November 18 follow-up removes all npm exceptions after updated lockfiles passed all four registry audits. The old braces and sprintf-js advisories were withdrawn upstream; those packages are still present and must not be described as patched. Both full and content deployments run the advisory gate in the unprivileged build job before packaging; disallowed findings or expired exceptions block publishing as well as code releases. Resolve the dependency first and rerun the release. Do not silently disable this gate for urgent content changes; an emergency exception needs a narrowly scoped, reviewed change with a stated expiry. Both branches also require CodeQL results with no medium-or-higher security alerts or analysis errors. Review pinned container digests and OS scans on every security update. A successful build does not imply a clean vulnerability scan.
 
-### Container scan review (2026-10-17)
+`python3 scripts/security-alerts.py --apply` updates existing deployment alerts without replacing channels or limits. Their real-event branch covers Cloud Run v1/v2 create/update/replace/delete and IAM methods using exact allowed-principal equality. A compromised allowlisted deploy identity remains outside this particular signal. Test against actual method fixtures as well as notification delivery; the synthetic test branch alone does not establish coverage.
 
-Trivy 0.76.0 scanned the deployed digests and four rebuilt candidate images. The rebuilt backend, staging gateway and preview each report 1 Critical and 56 High package findings; the sync worker reports 1 Critical and 57 High. These are package occurrences, including repeated source-package advisories, not independent exploitable request paths. None has a vendor-supplied fixed version in the current Debian Bookworm package channel. These counts are **not a clean scan**, and do not mean the old deployed images have been patched.
+Dependabot groups compatible security updates to reduce duplicate PRs. Node runtime and TypeScript major migrations remain separate reviewed work; automatic patch/minor and Node 24 image digest updates remain enabled.
 
-- The Critical `CVE-2023-45853` is attributed to Debian's `zlib1g`. Debian states that the vulnerable contributed MiniZip code is not built into the affected Bookworm zlib binary packages. This supports a package-specific non-applicability assessment, not a blanket exception for other MiniZip libraries. [Debian's assessment](https://security-tracker.debian.org/tracker/CVE-2023-45853).
-- Most High occurrences come from util-linux mount, namespace or partition-parsing utilities. These containers run as `node`; the application does not expose these utilities or accept shell commands. For example, the mount race requires a local user authorized to mount an fstab entry with an attacker-writable ancestor. These are reduced-reachability findings, not proof that post-compromise exploitation is impossible. A move to a newer Debian base with fixes needs its own compatibility tests. [Mount advisory](https://security-tracker.debian.org/tracker/CVE-2026-53613).
-- Remaining OS findings involve gzip's LZH parser, libacl symlink handling, systemd home-record verification, ncurses and Perl Archive::Tar. No application route invoking those affected interfaces was found in the reviewed source; indirect native/library use still needs reevaluation when dependencies or features change.
-- The sync worker's additional High is the existing `braces` advisory, covered by the expiring npm exception. Its schema validation runs reviewed local code, but the package remains present in that image.
+### Container scan review (2026-11-18)
 
-Owner: repository maintainer. Review these residuals by **2026-11-16**, on new vendor fixes, or before a new code path uses an affected parser/utility. Do not suppress all High/Critical findings globally. Raw scans and image digests are retained privately with the local acceptance evidence; scan the final deployed digests again after rollout.
+Four candidate images were built on the official Node 24 Debian Trixie slim base, pinned by digest, with available OS updates applied. The sync worker also passed schema extraction inside its container. Trivy 0.76.0 with its current database reports **0 Critical and 46 High package occurrences per image**, all in OS packages and none with a fixed version reported in that release's package channel. These are package occurrences, not 46 independently reachable application flaws. This is **not a clean scan**, nor evidence that serving images have been updated before rollout.
+
+The base upgrade removes the old MiniZip Critical report and uses the Debian fix for the newly reported zlib gzip-write overflow (`CVE-2026-85091`). The previous Bookworm candidates still contained that affected zlib package. [Debian zlib assessment](https://security-tracker.debian.org/tracker/CVE-2026-85091).
+
+Residual High findings are:
+
+- 36 occurrences of four util-linux advisories (`CVE-2026-76642`, `CVE-2026-78408`, `CVE-2026-78409`, `CVE-2026-78410`) spread across related binary packages. These concern privileged mount helpers, namespace/cgroup operations or bind-mount handling. Application routes do not expose shell commands or these utilities, and runtimes use the unprivileged `node` user. That reduces direct reachability; it is not a guarantee against post-compromise exploitation.
+- Three SQLite FTS5/session-parser advisories (`CVE-2026-119373`, `CVE-2026-119374`, `CVE-2026-119379`). This application uses Firestore and Sanity, not SQLite, and accepts no SQLite database/changeset uploads. Reassess if a dependency starts using that native library.
+- Seven occurrences covering libacl symlink traversal, systemd home-record verification, ncurses and Perl Archive::Tar. No request path invoking these affected interfaces was identified. Native dependencies and future features still require review.
+
+The old November 16 exception deadline has passed. **It has not been silently renewed.** The candidate scans and this reachability assessment support review, not unconditional v1 sign-off. Before tagging v1, the maintainer must explicitly accept any remaining applicable OS risk with an owner/review date, or choose further runtime reduction and compatibility testing. Retain raw scans and immutable image digests privately, and scan final deployed digests after rollout. Do not suppress High/Critical findings globally.
 
 The new staging Sanity robot credentials expire 2027-04-17. Rotate them before expiry, grant only the required project role, deploy/test, then revoke old credentials. Review other GitHub/Sanity/Resend credentials quarterly and after any exposure; never rotate a shared credential without identifying every consumer.
 

@@ -9,6 +9,8 @@ dist-preview/
 .astro/
 .sanity/
 *.tsbuildinfo
+__pycache__/
+*.pyc
 /tmp/
 /out-tsc/
 

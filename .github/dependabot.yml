@@ -6,6 +6,23 @@ updates:
       interval: weekly
     target-branch: staging
     open-pull-requests-limit: 5
+    groups:
+      security-patches:
+        applies-to: security-updates
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+      compatible-updates:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+    ignore:
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # Tailwind 4 needs a coordinated PostCSS/CSS and visual migration.
+      # Keep compatible updates enabled while that migration is deferred.
+      - dependency-name: tailwindcss
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -16,3 +33,6 @@ updates:
     schedule:
       interval: weekly
     target-branch: staging
+    ignore:
+      - dependency-name: node
+        update-types: ['version-update:semver-major']

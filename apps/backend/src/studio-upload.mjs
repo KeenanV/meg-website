@@ -8,11 +8,16 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 
 // Never accept the user ID or role claimed by a browser. Sanity validates the
 // presented personal session; project membership is checked independently.
-export async function sanityEditor(token, project, request = fetch) {
+export async function sanityEditor(token, project, request = fetch, {allowGlobal = false} = {}) {
   if (typeof token !== 'string' || token.length < 16 || token.length > 8192 || /\s/.test(token)) return null;
   if (!/^[a-z0-9]+$/.test(project)) return null;
   const options = {headers: {Authorization: `Bearer ${token}`}, redirect: 'error', signal: AbortSignal.timeout(8000)};
-  // Studio sessions are project-scoped; the global API rejects these tokens.
+  // Hosted Dashboard sessions may span projects. Only production-trusted
+  // callers may accept those; staging receives signed action capabilities.
+  if (!allowGlobal) {
+    const global = await request('https://api.sanity.io/v2025-10-26/users/me', options);
+    if (![401, 403].includes(global.status)) return null;
+  }
   const base = `https://${project}.api.sanity.io`;
   const response = await request(`${base}/v2025-10-26/users/me`, options);
   if (!response.ok) return null;
@@ -27,7 +32,7 @@ export async function sanityEditor(token, project, request = fetch) {
   return permitted ? hash(user.id) : null;
 }
 
-export function studioUploadHandler({origins, dataset, authorize, uploads, allow}) {
+export function studioUploadHandler({origins, dataset, authorize, uploads, allow, capabilityOnly = false}) {
   const burst = localBurst(20, 60_000);
   return async (req, res) => {
     res.setHeader('Cache-Control', 'private, no-store');
@@ -39,7 +44,7 @@ export function studioUploadHandler({origins, dataset, authorize, uploads, allow
     res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Methods', 'POST');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Sanity-Token');
+      res.setHeader('Access-Control-Allow-Headers', capabilityOnly ? 'Content-Type, X-Sync-Capability' : 'Content-Type, X-Sanity-Token');
       res.writeHead(204); return res.end();
     }
     if (req.method !== 'POST') return reply(405, {message: 'Use POST.'});
@@ -52,10 +57,11 @@ export function studioUploadHandler({origins, dataset, authorize, uploads, allow
         if (bytes > 4096) return reply(413, {message: 'Request too large.'});
         chunks.push(chunk);
       }
+      const raw = Buffer.concat(chunks).toString('utf8');
       let input;
-      try { input = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return reply(400, {message: 'Invalid request.'}); }
+      try { input = JSON.parse(raw); } catch { return reply(400, {message: 'Invalid request.'}); }
       if (!input || input.dataset !== dataset) return reply(400, {message: 'Wrong Studio environment.'});
-      const owner = await authorize(req.headers['x-sanity-token']);
+      const owner = await authorize(req.headers['x-sanity-token'], req, raw);
       if (!owner) return reply(403, {message: 'An authorized Sanity editor session is required.'});
       const route = new URL(req.url, 'http://localhost').pathname;
       if (route === '/api/studio/uploads/start') {

@@ -8,17 +8,19 @@
   "scripts": {
     "start": "node src/server.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check src/reader-protection.mjs && node --check src/service-handler.mjs && node --check src/production-gateway.mjs && node --check src/abuse.mjs && node --check src/client-identity.mjs && node --check src/handler.mjs && node --check src/private-catalog.mjs && node --check src/resources-cloud.mjs && node --check src/resources-local.mjs && node --check src/resources-state.mjs && node --check src/resources.mjs && node --check src/server.mjs && node --check src/staging-gateway.mjs && node --check src/staging-server.mjs && node --check src/studio-upload.mjs && node --check src/content-sync.mjs && node --check src/sync-storage.mjs && node --check src/sync-job.mjs && node --check src/studio-sync-api.mjs && node --check src/preview-session.mjs && node --check src/restore-sync-job.mjs"
+    "check": "node --check src/reader-protection.mjs && node --check src/service-handler.mjs && node --check src/production-gateway.mjs && node --check src/abuse.mjs && node --check src/client-identity.mjs && node --check src/handler.mjs && node --check src/private-catalog.mjs && node --check src/resources-cloud.mjs && node --check src/resources-local.mjs && node --check src/resources-state.mjs && node --check src/resources.mjs && node --check src/server.mjs && node --check src/staging-gateway.mjs && node --check src/staging-server.mjs && node --check src/studio-upload.mjs && node --check src/content-sync.mjs && node --check src/sync-storage.mjs && node --check src/sync-job.mjs && node --check src/studio-sync-api.mjs && node --check src/preview-session.mjs && node --check src/restore-sync-job.mjs && node --check src/sync-capability.mjs && node --check src/studio-sync-broker.mjs"
   },
   "dependencies": {
     "@google-cloud/firestore": "9.3.1",
-    "@google-cloud/storage": "8.2.0",
+    "@google-cloud/storage": "8.4.0",
     "@sanity/webhook": "4.0.4",
-    "google-auth-library": "11.3.0"
+    "google-auth-library": "11.3.1"
   },
   "overrides": {
     "gaxios@6.7.1": {
       "uuid": "^11.1.1"
-    }
+    },
+    "glob@>=9 <14.0.2": "^14.0.2",
+    "minimatch@>=7 <11.0.1": "^11.0.1"
   }
 }
