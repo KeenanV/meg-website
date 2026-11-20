@@ -22,12 +22,12 @@ if (process.env.RESOURCES_ACCESS) {
   const db = new Firestore({projectId: project});
   studio = studioUploadHandler({dataset: 'production',
     origins: ['http://localhost:3333', 'https://megvandeusen.sanity.studio'],
-    authorize: token => sanityEditor(token, 'ap0mc9ri'),
+    authorize: token => sanityEditor(token, 'ap0mc9ri', fetch, {allowGlobal: true}),
     uploads: bucketUploads(new Storage({projectId: project}).bucket('megvandeusen-website-resources'), db),
     allow: firestoreAllowance(db, 'studio'),
   });
 }
-const sync = studioSyncBroker({authorize: token => sanityEditor(token, 'ap0mc9ri'),
+const sync = studioSyncBroker({authorize: (token, sanityProject) => sanityEditor(token, sanityProject, fetch, {allowGlobal: true}),
   issue: process.env.SYNC_BROKER_PRIVATE_KEY ? syncSigner(process.env.SYNC_BROKER_PRIVATE_KEY) : null,
   allow: firestoreAllowance(new Firestore({projectId: project}), 'studio-sync-broker')});
 const handler = productionGateway({service: createServiceHandler(), resources, studio, sync});

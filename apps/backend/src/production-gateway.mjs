@@ -5,7 +5,7 @@ export function productionGateway({service, resources, studio, sync}) {
     let path;
     try { path = new URL(req.url, 'http://localhost').pathname; }
     catch { res.writeHead(400, {'Cache-Control': 'no-store'}); res.end('Invalid request.'); return; }
-    if (path.startsWith('/api/studio/sync/') && sync) return sync(req, res);
+    if ((path.startsWith('/api/studio/sync/') || path.startsWith('/api/studio/staging/')) && sync) return sync(req, res);
     if (path.startsWith('/api/resources/') || path.startsWith('/api/studio/uploads/')) {
       if (!resources || !studio) {
         res.writeHead(503, {'Content-Type': 'application/json', 'Cache-Control': 'private, no-store', 'X-Robots-Tag': 'noindex'});

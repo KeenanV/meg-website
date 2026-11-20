@@ -33,16 +33,69 @@ test('capabilities bind signature, editor, action and exact body; expire and are
 });
 
 test('staging does not fall back to production editor tokens or accept mixed authorization', async () => {
-  const auth = syncAuthorization({editor: async token => token === 'staging-only' ? owner : null,
-    capability: async token => token === 'signed-request' ? owner : null});
+  const auth = syncAuthorization({capability: async token => token === 'signed-request' ? owner : null});
   const req = origin => ({headers: {origin}, url: path});
   assert.equal(await auth('production-editor', req('https://meg-website-staging.sanity.studio'), body), null);
-  assert.equal(await auth('staging-only', req('https://meg-website-staging.sanity.studio'), body), owner);
+  assert.equal(await auth('staging-only', req('https://meg-website-staging.sanity.studio'), body), null);
   const broker = req(SYNC_BROKER_ORIGIN); broker.headers['x-sync-capability'] = 'signed-request';
   assert.equal(await auth('production-editor', broker, body), null);
   assert.equal(await auth(undefined, broker, body), owner);
   broker.headers.origin = 'https://meg-website-staging.sanity.studio';
   assert.equal(await auth('staging-only', broker, body), null);
+});
+
+test('upload permissions cannot be changed into sync, other uploads, or a different dataset', async () => {
+  const pair = keys(), used = new Set();
+  const issue = syncSigner(pair.privateKey);
+  const check = syncVerifier(pair.publicKey, async id => {if (used.has(id)) return false; used.add(id); return true;});
+  const uploadPath = '/api/studio/uploads/start';
+  const input = JSON.stringify({dataset: 'staging', size: 128, contentType: 'audio/mpeg'});
+  const token = issue(owner, uploadPath, input);
+  assert.equal(await check(token, path, input), null);
+  assert.equal(await check(token, '/api/studio/uploads/finish', input), null);
+  assert.equal(await check(token, uploadPath, input.replace('staging', 'production')), null);
+  assert.equal(await check(token, uploadPath, input), owner);
+  assert.equal(await check(token, uploadPath, input), null);
+  assert.throws(() => issue(owner, '/api/resources/catalog', input));
+});
+
+test('staging Dashboard actions use staging membership and never forward the session', async t => {
+  const pair = keys(), calls = [], checkedProjects = [];
+  const check = syncVerifier(pair.publicKey, async () => true);
+  const server = createServer(studioSyncBroker({
+    authorize: async (token, project) => {checkedProjects.push(project); return token === 'dashboard-session' && project === '77uvsyo1' ? owner : null;},
+    issue: syncSigner(pair.privateKey), allow: async () => true,
+    request: async (url, options) => {
+      calls.push(url);
+      const targetPath = new URL(url).pathname;
+      assert.equal(await check(options.headers['X-Sync-Capability'], targetPath, options.body), owner);
+      assert(!JSON.stringify(options).includes('dashboard-session'));
+      assert(!JSON.stringify(options).includes('private-cookie'));
+      assert.equal(options.redirect, 'error');
+      assert.deepEqual(Object.keys(options.headers).sort(), ['Content-Type', 'Origin', 'X-Sync-Capability']);
+      return new Response(JSON.stringify({ok: true}), {status: 200});
+    },
+  }));
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => {server.close(resolve); server.closeAllConnections();}));
+  const post = (route, payload, origin = 'https://meg-website-staging.sanity.studio') => fetch(`http://127.0.0.1:${server.address().port}${route}`, {
+    method: 'POST', headers: {Origin: origin, 'Content-Type': 'application/json', 'X-Sanity-Token': 'dashboard-session', Cookie: 'private-cookie'},
+    body: JSON.stringify(payload),
+  });
+  const start = '/api/studio/staging/uploads/start', data = {dataset: 'staging', size: 128, contentType: 'audio/mpeg'};
+  assert.equal((await post(start, data)).status, 200);
+  assert.equal((await post('/api/studio/staging/uploads/finish', {dataset: 'staging', id: '12345678-1234-1234-1234-123456789012'})).status, 200);
+  assert.equal((await post('/api/studio/staging/sync/plan', {mode: 'update'})).status, 200);
+  assert.equal((await post(start, {...data, dataset: 'production'})).status, 400);
+  assert.equal((await post(start, {...data, url: 'https://evil.test'})).status, 400);
+  assert.equal((await post(start, {...data, size: -1})).status, 400);
+  assert.equal((await post(start, data, 'https://megvandeusen.sanity.studio')).status, 403);
+  assert.equal((await post('/api/studio/staging/uploads/delete', data)).status, 403);
+  assert.equal((await post('/api/studio/sync/plan', {mode: 'reset'})).status, 403);
+  // Forging production's Origin cannot turn a staging-only editor into a production editor.
+  assert.equal((await post('/api/studio/sync/plan', {mode: 'reset'}, 'https://megvandeusen.sanity.studio')).status, 403);
+  assert.deepEqual(checkedProjects, ['77uvsyo1', '77uvsyo1', '77uvsyo1', 'ap0mc9ri']);
+  assert.equal(calls.length, 3);
 });
 
 test('production broker forwards only signed action permissions, never editor credentials; redirects fail closed', async t => {
