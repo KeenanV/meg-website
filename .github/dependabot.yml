@@ -19,6 +19,10 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
+      # Tailwind 4 needs a coordinated PostCSS/CSS and visual migration.
+      # Keep compatible updates enabled while that migration is deferred.
+      - dependency-name: tailwindcss
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:
