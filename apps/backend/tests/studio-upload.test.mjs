@@ -25,6 +25,21 @@ test('only verified human editors of this Sanity project may upload', async () =
   assert.equal(await sanityEditor('global-token-long-enough', '77uvsyo1', async () => ({ok: true, status: 200})), null);
 });
 
+test('production-trusted authentication supports Dashboard sessions but still checks the exact project and human role', async () => {
+  for (const [project, role, robot, expected] of [
+    ['77uvsyo1', 'editor', false, true], ['ap0mc9ri', 'editor', false, false],
+    ['77uvsyo1', 'viewer', false, false], ['77uvsyo1', 'administrator', true, false],
+  ]) {
+    const request = async url => {
+      assert.equal(new URL(url).hostname, '77uvsyo1.api.sanity.io');
+      return {ok: true, status: 200, json: async () => url.endsWith('/users/me') ? {id: 'human'}
+        : {id: project, members: [{id: 'human', isRobot: robot, roles: [{name: role}]}]}};
+    };
+    assert.equal(Boolean(await sanityEditor('dashboard-session-long-enough', '77uvsyo1', request, {allowGlobal: true})), expected);
+  }
+  assert.equal(await sanityEditor('revoked-session-long-enough', '77uvsyo1', async () => ({ok: false, status: 401}), {allowGlobal: true}), null);
+});
+
 test('upload API rejects anonymous, cross-environment, oversized, and cross-origin requests', async t => {
   let starts = 0;
   const handler = studioUploadHandler({origins: ['http://localhost:3334'], dataset: 'staging',
