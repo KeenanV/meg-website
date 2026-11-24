@@ -106,10 +106,12 @@ deleted, because deletion needs a reviewed reference inventory.
    cannot recall downloads or guarantee immediate cache removal. Involve Sanity
    support for cache retirement if required.
 
-`apps/studio/scripts/seed-private-recordings.mjs` previews by default. With
-`--apply` it backs up originals and creates private staging copies only. It never
-deletes originals or changes production documents. Do not run bulk dataset
-replacement or broad asset deletion to perform this migration.
+The original `seed-private-recordings.mjs` migration helper is retired and fails
+without reading credentials or making requests. Upload new private recordings
+through Studio. Copy existing production recordings with production Studio’s
+“Refresh staging” tool, which uses the trusted broker and scoped capabilities.
+Any future legacy migration requires a separately reviewed, environment-aware
+process; do not revive the old direct-token helper.
 
 ## Cloud Armor: deliberately not provisioned
 

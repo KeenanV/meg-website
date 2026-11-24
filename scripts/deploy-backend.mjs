@@ -1,3 +1,4 @@
+import {deployService} from './verify-serving-release.mjs';
 import {accountFlags, gcloud, run} from './cloud-cli.mjs';
 import { fileURLToPath } from 'node:url';
 
@@ -10,8 +11,7 @@ if (!process.argv.includes('--verified')) {
 run(gcloud, ['firestore', 'databases', 'describe', '--database=(default)',
   '--project=megvandeusen-website', ...accountFlags, '--format=value(name)', '--quiet']);
 // Keep existing Cloud Run environment and pinned secret versions. Do not change recipients during code deploys.
-run(gcloud, [
-  'run', 'deploy', 'website-backend', '--source=apps/backend', '--region=us-west1',
+deployService('megvandeusen-website', 'website-backend', ['--source=apps/backend', '--region=us-west1',
   '--project=megvandeusen-website', ...accountFlags,
   '--service-account=website-backend@megvandeusen-website.iam.gserviceaccount.com',
   '--build-service-account=projects/megvandeusen-website/serviceAccounts/backend-builder@megvandeusen-website.iam.gserviceaccount.com',

@@ -1,3 +1,4 @@
+import {assertHostingRelease, verifyService} from './verify-serving-release.mjs';
 import {readFile} from 'node:fs/promises';
 import {accountFlags, gcloud, run} from './cloud-cli.mjs';
 
@@ -18,8 +19,8 @@ if (hosting.site !== project || JSON.stringify(hosting.ignore) !== '["**/*"]'
   || JSON.stringify(hosting.rewrites) !== '[{"source":"**","run":{"serviceId":"staging-website","region":"us-west1","pinTag":true}}]') {
   throw new Error('Staging must serve only the authenticated proxy');
 }
-const revision = run(gcloud, ['run', 'services', 'describe', 'staging-website', ...flags,
-  '--format=value(status.latestReadyRevisionName)'], {stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8'}).trim();
+const identity = verifyService(project, 'staging-website');
+const revision = identity.revision;
 if (!/^staging-website-\d+-[a-z0-9]+$/.test(revision)) throw new Error('Unexpected staging revision');
 const tag = 'hosting-'+revision.slice('staging-website-'.length);
 run(gcloud, ['run', 'services', 'update-traffic', 'staging-website', ...flags, '--update-tags='+tag+'='+revision, '--quiet']);
@@ -28,7 +29,12 @@ const config = {rewrites: [{glob: '**', run: {serviceId: 'staging-website', regi
 const version = await request('POST', `sites/${project}/versions`, {config});
 await request('PATCH', version.name+'?updateMask=status', {status: 'FINALIZED'});
 const release = await request('POST', `sites/${project}/releases?versionName=${version.name}`, {message: 'Private staging proxy; no public static files'});
-console.log('Released staging:', release.name);
+const live = await request('GET', `sites/${project}/channels/live`);
+assertHostingRelease(live.release, project, 'staging-website', tag);
+const observed = JSON.parse(run(gcloud, ['run', 'services', 'describe', 'staging-website', ...flags, '--format=json'], {stdio: ['ignore', 'pipe', 'inherit'], encoding: 'utf8'}));
+if (!observed.status.traffic.some(item => item.tag === tag && item.revisionName === revision)) throw new Error('Hosting tag points at the wrong revision');
+verifyService(project, 'staging-website', identity);
+console.log('Released and verified staging:', release.name);
 
 // Retired releases can be redeployed with current secrets; their public tags need not stay live.
 run(process.execPath, ['scripts/retire-staging-tags.mjs', '--apply']);
