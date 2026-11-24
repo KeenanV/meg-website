@@ -71,4 +71,19 @@ for bucket in buckets:
 # Remove only the dedicated builder's unconditional broad binding.
 if any(b['role'] == 'roles/run.builder' and member in b.get('members', []) and not b.get('condition') for b in policy.get('bindings', [])):
     cloud('projects', 'remove-iam-policy-binding', project, '--member=' + member, '--role=roles/run.builder', '--condition=None')
+# The legacy default builder is not a service agent. Retire its broad role only
+# after an explicit inventory proves no retained build/trigger uses it.
+number = cloud('projects', 'describe', project)['projectNumber']
+legacy = 'serviceAccount:' + str(number) + '@cloudbuild.gserviceaccount.com'
+if any(b['role'] == 'roles/cloudbuild.builds.builder' and legacy in b.get('members', []) for b in policy.get('bindings', [])):
+    inventory = {}
+    for region in ['global', 'us-west1']:
+        builds = cloud('builds', 'list', '--project=' + project, '--region=' + region, '--limit=1000')
+        triggers = cloud('builds', 'triggers', 'list', '--project=' + project, '--region=' + region)
+        inventory[region] = {'builds': builds, 'triggers': triggers}
+        if len(builds) >= 1000 or triggers or any(b.get('serviceAccount') != 'projects/' + project + '/serviceAccounts/' + builder for b in builds):
+            raise RuntimeError('Legacy builder consumers need review; scoped dedicated builder changes are already applied.')
+    preserve('legacy-builder-consumers.json', inventory)
+    cloud('projects', 'remove-iam-policy-binding', project, '--member=' + legacy,
+          '--role=roles/cloudbuild.builds.builder', '--condition=None')
 print('Applied. Verify effective source/private-object access and a real build before promoting.')
