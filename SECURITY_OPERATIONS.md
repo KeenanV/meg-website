@@ -141,7 +141,11 @@ after staging acceptance) as the infrastructure owner. The default without
 Dedicated builders retain the reviewed non-storage build permissions; object
 reads are granted only on the two named build-source buckets. Bucket-only
 permissions do not narrow a project-wide grant, so the old `roles/run.builder`
-binding is explicitly removed after replacement grants are installed. Newly
+binding is explicitly removed after replacement grants are installed. The legacy
+default builder role is also removed only after retained build/trigger inventory
+confirms that all builds use the dedicated identity and no triggers exist in
+the two configured build locations (global and us-west1). Google service-agent
+roles are preserved. Newly
 created IAM roles can take a few minutes to propagate; retry the idempotent
 command if the bucket API has not recognized a new role yet.
 
