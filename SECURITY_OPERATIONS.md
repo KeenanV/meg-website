@@ -132,3 +132,49 @@ Preview cookies are bearer credentials valid for 30 minutes; preview media links
 Cloud Armor remains off. CAPTCHA, bounded instances, local throttles and shared budgets reduce abuse cost, but a distributed attacker can still exhaust allowances or cause availability loss. Durable webhook claims prevent ordinary replay across restarts, but a crash after GitHub accepts a dispatch and before its acknowledgement is stored can still produce a retry; exactly-once delivery across those systems is not promised. GitHub serializes releases and retains only the newest pending rebuild.
 
 Signed publishing events also share a durable allowance of 120 dispatch attempts/hour and 500/day per environment, reserved before contacting GitHub. Duplicates and sync-suppressed events do not consume dispatch slots. Exhaustion returns a retryable failure and alerts rather than pretending publication succeeded. Once the allowance recovers, redeliver the failed event or run a content deployment; Sanity's finite retry window is not an unlimited queue.
+
+## v1.0.1 maintenance and release verification
+
+Run `python3 scripts/harden-build-storage.py staging --apply` (then `production`
+after staging acceptance) as the infrastructure owner. The default without
+`--apply` only inspects and saves the baseline under `.private/build-storage/`.
+Dedicated builders retain the reviewed non-storage build permissions; object
+reads are granted only on the two named build-source buckets. Bucket-only
+permissions do not narrow a project-wide grant, so the old `roles/run.builder`
+binding is explicitly removed after replacement grants are installed. The legacy
+default builder role is also removed only after retained build/trigger inventory
+confirms that all builds use the dedicated identity and no triggers exist in
+the two configured build locations (global and us-west1). Google service-agent
+roles are preserved. Newly
+created IAM roles can take a few minutes to propagate; retry the idempotent
+command if the bucket API has not recognized a new role yet.
+
+Both source buckets must have uniform bucket-level access and explicit public
+access prevention. Every service/job deployment checks these settings. Keep
+source archives through the release recovery window; do not delete them in this
+maintenance. Runtime rollback uses immutable images, but source archives are
+also useful build evidence. Review archives older than 90 days against retained
+release/build records before any separate cleanup; never apply this policy to
+private recordings or editorial backups.
+
+The four Dockerfiles require patched Trixie glibc (`libc6` and `libc-bin`
+`2.41-12+deb13u5` or newer). A changed package-layer instruction forces this
+maintenance rebuild; the guard makes a stale/unavailable patch fail the build.
+For future OS maintenance, refresh the layer/base and scan the actual new
+immutable images; a successful build is not a vulnerability scan.
+
+Normal deployments require 100% LATEST traffic, a ready latest-created revision,
+and matching immutable template/serving image digests. They refuse an existing
+manual revision pin or canary rather than overwrite it. After an intentional
+rollback, verify the chosen revision and image, then explicitly restore LATEST
+routing when ready to resume normal releases. Staging Hosting additionally
+verifies the live release's protected-service rewrite and actual revision tag.
+The sync job is deployed by digest and read back. Content-only releases also
+verify runtime routing, even though they do not rebuild the unchanged backend.
+Verification records are saved under `.private/release-evidence/`; deployment
+logs include revision/digest identity without application secrets.
+
+A `v1.x.y` release is tagged only after the staging and production workflows and
+acceptance checks succeed. Keep the version tag immutable and advance the `v1`
+alias to that same commit only after verification. Keep the detailed internal
+security evidence out of public release notes.

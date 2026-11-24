@@ -29,7 +29,7 @@ export function studioSyncApi({db, authorize, origins, launch, allowance = fires
     res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
     if (req.method === 'OPTIONS') {
       res.setHeader('Access-Control-Allow-Methods', 'POST');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Sanity-Token, X-Sync-Capability');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Sync-Capability');
       res.writeHead(204); return res.end();
     }
     if (req.method !== 'POST' || !/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) return reply(405, {message: 'Use JSON POST.'});

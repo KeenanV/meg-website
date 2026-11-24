@@ -1,3 +1,4 @@
+import {verifyService} from './verify-serving-release.mjs';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -10,6 +11,8 @@ process.env.GOOGLE_CLOUD_QUOTA_PROJECT = 'megvandeusen-website';
 // The repository variable remains unset/preview until the approved launch.
 const channel = process.env.HOSTING_RELEASE_CHANNEL || 'preview';
 const config = createWebsiteConfig(channel);
+const backend = verifyService('megvandeusen-website', 'website-backend');
+verifyService('megvandeusen-website', 'editorial-preview');
 const check = spawnSync('npm', ['run', 'check:build', '--prefix', 'apps/web'], { stdio: 'inherit' });
 if (check.error) throw check.error;
 if (check.status !== 0) process.exit(check.status ?? 1);
@@ -25,3 +28,4 @@ const result = spawnSync(process.execPath, [
 ], { stdio: 'inherit' });
 if (result.error) throw result.error;
 process.exitCode = result.status ?? 1;
+if (result.status === 0) verifyService('megvandeusen-website', 'website-backend', backend);

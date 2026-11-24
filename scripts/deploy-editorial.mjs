@@ -1,3 +1,4 @@
+import {cloudJson, deployService, verifyBuildStorage} from './verify-serving-release.mjs';
 import {mkdir, mkdtemp, cp, writeFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
@@ -24,7 +25,7 @@ async function context(kind) {
 }
 const common = ['--region=us-west1', `--project=${project}`, ...accountFlags, '--quiet'];
 const build = `--build-service-account=projects/${project}/serviceAccounts/${builder}@${project}.iam.gserviceaccount.com`;
-if (!process.argv.includes('--worker-only')) run(gcloud, ['run', 'deploy', 'editorial-preview', `--source=${await context('preview')}`, ...common, build,
+if (!process.argv.includes('--worker-only')) deployService(project, 'editorial-preview', [`--source=${await context('preview')}`, ...common, build,
   `--service-account=editorial-preview@${project}.iam.gserviceaccount.com`, ...(process.env.CI ? [] : ['--allow-unauthenticated']),
   `--set-env-vars=GOOGLE_CLOUD_PROJECT=${project},PUBLIC_SANITY_DATASET=${dataset},NODE_ENV=production`,
   `--set-secrets=SANITY_PREVIEW_TOKEN=${dataset === 'staging' ? 'sanity-staging-v2-preview' : 'sanity-preview-token'}:latest,PREVIEW_SESSION_SECRET=preview-session-secret:latest`,
@@ -32,6 +33,7 @@ if (!process.argv.includes('--worker-only')) run(gcloud, ['run', 'deploy', 'edit
 if (dataset === 'staging' && !process.argv.includes('--preview-only')) {
   // Job source deployment does not accept a custom build identity. Build the
   // image explicitly, using the same restricted builder as the staging site.
+  verifyBuildStorage(project);
   const directory = await context('sync');
   const image = `us-west1-docker.pkg.dev/${project}/cloud-run-source-deploy/studio-content-sync:${Date.now()}`;
   const cacheImage = `us-west1-docker.pkg.dev/${project}/cloud-run-source-deploy/studio-content-sync:latest`;
@@ -41,9 +43,14 @@ if (dataset === 'staging' && !process.argv.includes('--preview-only')) {
   }));
   run(gcloud, ['builds', 'submit', directory, ...common, `--config=${path.join(directory, 'build.json')}`,
     `--service-account=projects/${project}/serviceAccounts/${builder}@${project}.iam.gserviceaccount.com`]);
-  run(gcloud, ['run', 'jobs', 'deploy', 'studio-content-sync', `--image=${image}`, ...common,
+  const digest = cloudJson(['artifacts', 'docker', 'images', 'describe', image, `--project=${project}`]).image_summary.fully_qualified_digest;
+  if (!/@sha256:[a-f0-9]{64}$/.test(digest)) throw new Error('Worker build did not resolve to a digest');
+  run(gcloud, ['run', 'jobs', 'deploy', 'studio-content-sync', `--image=${digest}`, ...common,
     '--service-account=studio-content-sync@megvandeusen-staging.iam.gserviceaccount.com',
     '--set-env-vars=GOOGLE_CLOUD_PROJECT=megvandeusen-staging,SANITY_STUDIO_DATASET=staging',
     '--set-secrets=SANITY_STAGING_WRITE_TOKEN=sanity-staging-v2-writer:latest,GITHUB_WORKFLOW_TOKEN=github-workflow-token:latest',
     '--tasks=1', '--parallelism=1', '--max-retries=0', '--task-timeout=15m', '--cpu=1', '--memory=2Gi']);
+  const job = cloudJson(['run', 'jobs', 'describe', 'studio-content-sync', ...common]);
+  if (job.spec?.template?.spec?.template?.spec?.containers?.[0]?.image !== digest) throw new Error('Worker image did not match the intended release');
+  console.log('Verified sync worker image:', digest);
 }
