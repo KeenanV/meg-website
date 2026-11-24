@@ -1,6 +1,10 @@
 FROM node:24-trixie-slim@sha256:af02d57b57719b9657a45199a79264a9437940cd55b3c7b3fc99615654f124a0
 # Refresh security updates in the pinned OS snapshot during each rebuild.
-RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+# v1.0.1 OS baseline: rebuild the package layer and require patched glibc.
+RUN apt-get update && apt-get upgrade -y \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libc6)" ge '2.41-12+deb13u5' \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libc-bin)" ge '2.41-12+deb13u5' \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app/apps/studio
 COPY apps/studio/package*.json ./
 RUN npm ci --omit=dev

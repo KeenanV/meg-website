@@ -1,4 +1,5 @@
-import {accountFlags, gcloud, run} from './cloud-cli.mjs';
+import {deployService} from './verify-serving-release.mjs';
+import {accountFlags, run} from './cloud-cli.mjs';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
@@ -9,7 +10,7 @@ if (!process.argv.includes('--prepared')) run(process.execPath, ['scripts/prepar
 const context = (await readFile('.private/staging-build-path.txt', 'utf8')).trim();
 if (!context.startsWith(path.join(root, '.private/staging-build-'))) throw new Error('Invalid staging context');
 if (!process.argv.includes('--verified')) run('npm', ['test', '--prefix', 'apps/backend']);
-run(gcloud, ['run', 'deploy', 'staging-website', '--source='+context, '--region=us-west1',
+deployService('megvandeusen-staging', 'staging-website', ['--source='+context, '--region=us-west1',
   '--project=megvandeusen-staging', ...accountFlags,
   '--service-account=staging-website@megvandeusen-staging.iam.gserviceaccount.com',
   '--build-service-account=projects/megvandeusen-staging/serviceAccounts/staging-builder@megvandeusen-staging.iam.gserviceaccount.com',

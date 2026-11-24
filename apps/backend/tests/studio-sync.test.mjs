@@ -15,6 +15,8 @@ test('Studio sync requires editor auth, allowed origin, reviewed plan, matching 
   const server = createServer(handler);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => {server.close(resolve); server.closeAllConnections();}));
+  const preflight = await fetch(`http://127.0.0.1:${server.address().port}/api/studio/sync/plan`, {method: 'OPTIONS', headers: {Origin: 'https://megvandeusen.sanity.studio'}});
+  assert.equal(preflight.headers.get('access-control-allow-headers'), 'Content-Type, X-Sync-Capability');
   const post = (route, body, headers = {}) => fetch(`http://127.0.0.1:${server.address().port}/api/studio/sync/${route}`, {
     method: 'POST', headers: {Origin: 'https://megvandeusen.sanity.studio', 'X-Sanity-Token': 'editor', 'Content-Type': 'application/json', ...headers}, body: JSON.stringify(body)});
   assert.equal((await post('plan', {mode: 'reset'}, {'X-Sanity-Token': 'reader-password'})).status, 403);
